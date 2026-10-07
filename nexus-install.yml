@@ -1,0 +1,118 @@
+---
+- name: Install and configure Nexus Repository Manager
+  hosts: nexus
+  become: true
+
+  vars:
+    nexus_version: "3.83.1-01"
+    nexus_user: "nexus"
+    nexus_home: "/opt/nexus"
+    nexus_data: "/opt/sonatype-work"
+    nexus_download_url: "https://download.sonatype.com/nexus/3/nexus-{{ nexus_version }}-unix.tar.gz"
+
+  tasks:
+
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name:
+          - java-17-amazon-corretto
+          - wget
+          - tar
+        state: present
+
+    - name: Create Nexus user
+      ansible.builtin.user:
+        name: "{{ nexus_user }}"
+        shell: /bin/bash
+        create_home: true
+
+    - name: Download Nexus
+      ansible.builtin.get_url:
+        url: "{{ nexus_download_url }}"
+        dest: "/tmp/nexus-{{ nexus_version }}-unix.tar.gz"
+        mode: "0644"
+
+    - name: Extract Nexus
+      ansible.builtin.unarchive:
+        src: "/tmp/nexus-{{ nexus_version }}-unix.tar.gz"
+        dest: "/opt"
+        remote_src: true
+        creates: "/opt/nexus-{{ nexus_version }}"
+
+    - name: Rename Nexus directory
+      ansible.builtin.command:
+        cmd: "mv /opt/nexus-{{ nexus_version }} {{ nexus_home }}"
+      args:
+        creates: "{{ nexus_home }}"
+
+    - name: Create Nexus data directory
+      ansible.builtin.file:
+        path: "{{ nexus_data }}"
+        state: directory
+        owner: "{{ nexus_user }}"
+        group: "{{ nexus_user }}"
+        mode: "0755"
+
+    - name: Set Nexus directory ownership
+      ansible.builtin.file:
+        path: "{{ nexus_home }}"
+        owner: "{{ nexus_user }}"
+        group: "{{ nexus_user }}"
+        recurse: true
+
+    - name: Configure Nexus to run as nexus user
+      ansible.builtin.lineinfile:
+        path: "{{ nexus_home }}/bin/nexus.rc"
+        regexp: '^run_as_user='
+        line: 'run_as_user="{{ nexus_user }}"'
+        create: true
+
+    - name: Create systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/nexus.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Nexus Repository Manager
+          After=network.target
+
+          [Service]
+          Type=forking
+          LimitNOFILE=65536
+          User={{ nexus_user }}
+          Group={{ nexus_user }}
+          ExecStart={{ nexus_home }}/bin/nexus start
+          ExecStop={{ nexus_home }}/bin/nexus stop
+          Restart=on-abort
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and start Nexus
+      ansible.builtin.systemd:
+        name: nexus
+        enabled: true
+        state: started
+
+    - name: Open Nexus port 8081
+      ansible.posix.firewalld:
+        port: 8081/tcp
+        permanent: true
+        state: enabled
+        immediate: true
+      ignore_errors: true
+
+    - name: Wait for Nexus
+      ansible.builtin.wait_for:
+        port: 8081
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        delay: 10
+        timeout: 180
+
+    - name: Display Nexus URL
+      ansible.builtin.debug:
+        msg: "Nexus is available at http://{{ ansible_host | default(inventory_hostname) }}:8081"

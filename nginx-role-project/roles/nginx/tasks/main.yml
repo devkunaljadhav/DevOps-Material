@@ -1,0 +1,19 @@
+---
+- name: Install nginx
+  ansible.builtin.package:
+    name: "{{nginx_package}}"
+    state: present
+
+
+- name: Start and enable nginx
+  ansible.builtin.service:
+    name: "{{nginx_service}}"
+    state: started
+    enabled: true
+
+- name: Deploy custom index page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /usr/share/nginx/html/index.html
+  notify: Restart nginx
+  

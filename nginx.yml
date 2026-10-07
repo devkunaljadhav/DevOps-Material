@@ -1,0 +1,37 @@
+
+---
+- name: Install and Configure Nginx
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+
+    - name: Install Nginx
+      ansible.builtin.dnf:
+        name: nginx
+        state: present
+
+    - name: Start Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: started
+
+    - name: Enable Nginx
+      ansible.builtin.service:
+        name: nginx
+        enabled: yes
+
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+    - name: Check Nginx Status
+      ansible.builtin.command: systemctl is-active nginx
+      register: nginx_status
+      changed_when: false
+
+    - name: Display Status
+      ansible.builtin.debug:
+        msg: "Nginx Status: {{ nginx_status.stdout }}"

@@ -1,0 +1,38 @@
+
+---
+- name: Install and Configure Apache
+  hosts: all
+  become: yes
+  gather_facts: false
+
+  tasks:
+
+    - name: Install Apache
+      ansible.builtin.dnf:
+        name: httpd
+        state: present
+
+    - name: Create Webpage
+      ansible.builtin.copy:
+        content: |
+          <html>
+          <h1>Welcome to Ansible Automation</h1>
+          <h2>Apache Web Server is Running</h2>
+          </html>
+        dest: /var/www/html/index.html
+        mode: '0644'
+
+    - name: Start Apache
+      ansible.builtin.service:
+        name: httpd
+        state: started
+
+    - name: Enable Apache
+      ansible.builtin.service:
+        name: httpd
+        enabled: yes
+
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: httpd
+        state: restarted

@@ -1,0 +1,21 @@
+---
+- name: Install Git
+  hosts: all
+  become: yes
+  gather_facts: false
+
+  tasks:
+
+    - name: Install Git
+      ansible.builtin.dnf:
+        name: git
+        state: present
+
+    - name: Check Git Version
+      ansible.builtin.command: git --version
+      register: git_version
+      changed_when: false
+
+    - name: Display Git Version
+      ansible.builtin.debug:
+        msg: "{{ git_version.stdout }}"

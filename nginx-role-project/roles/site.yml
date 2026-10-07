@@ -1,0 +1,7 @@
+---
+- name: Install Nginx using Role
+  hosts: prod
+  become: true
+
+  roles: 
+    - nginx

@@ -1,0 +1,107 @@
+
+---
+- name: Install and Configure Apache Tomcat
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    tomcat_version: "10.1.44"
+    tomcat_user: tomcat
+    tomcat_home: /opt/tomcat
+
+  tasks:
+
+    - name: Install Java
+      ansible.builtin.dnf:
+        name: java-17-amazon-corretto
+        state: present
+
+    - name: Create Tomcat User
+      ansible.builtin.user:
+        name: "{{ tomcat_user }}"
+        shell: /bin/false
+        home: "{{ tomcat_home }}"
+        create_home: no
+        system: yes
+
+    - name: Download Tomcat
+      ansible.builtin.get_url:
+        url: "https://archive.apache.org/dist/tomcat/tomcat-10/v10.1.44/bin/apache-tomcat-10.1.44.tar.gz"
+        dest: /tmp/tomcat.tar.gz
+        mode: '0644'
+
+    - name: Create Tomcat Directory
+      ansible.builtin.file:
+        path: "{{ tomcat_home }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_user }}"
+        mode: '0755'
+
+    - name: Extract Tomcat
+      ansible.builtin.unarchive:
+        src: /tmp/tomcat.tar.gz
+        dest: /opt/tomcat
+        remote_src: yes
+        extra_opts:
+          - --strip-components=1
+        creates: /opt/tomcat/bin/catalina.sh
+
+    - name: Set Tomcat Permissions
+      ansible.builtin.file:
+        path: "{{ tomcat_home }}"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_user }}"
+        recurse: yes
+
+    - name: Create Tomcat Systemd Service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/tomcat.service
+        content: |
+          [Unit]
+          Description=Apache Tomcat
+          After=network.target
+
+          [Service]
+          Type=forking
+          User=tomcat
+          Group=tomcat
+          Environment="JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto"
+          Environment="CATALINA_HOME=/opt/tomcat"
+          Environment="CATALINA_BASE=/opt/tomcat"
+          ExecStart=/opt/tomcat/bin/startup.sh
+          ExecStop=/opt/tomcat/bin/shutdown.sh
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Reload Systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable Tomcat
+      ansible.builtin.systemd:
+        name: tomcat
+        enabled: yes
+
+    - name: Start Tomcat
+      ansible.builtin.systemd:
+        name: tomcat
+        state: started
+
+    - name: Restart Tomcat
+      ansible.builtin.systemd:
+        name: tomcat
+        state: restarted
+
+    - name: Check Tomcat Status
+      ansible.builtin.command: systemctl is-active tomcat
+      register: tomcat_status
+      changed_when: false
+
+    - name: Display Tomcat Status
+      ansible.builtin.debug:
+        msg: "Tomcat Status: {{ tomcat_status.stdout }}"

@@ -1,0 +1,31 @@
+---
+- name: Install Node.js
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Install Node.js and npm
+      ansible.builtin.dnf:
+        name:
+          - nodejs
+          - npm
+        state: present
+
+    - name: Check Node.js version
+      ansible.builtin.command:
+        cmd: node --version
+      register: node_version
+      changed_when: false
+
+    - name: Check npm version
+      ansible.builtin.command:
+        cmd: npm --version
+      register: npm_version
+      changed_when: false
+
+    - name: Display versions
+      ansible.builtin.debug:
+        msg:
+          - "Node.js: {{ node_version.stdout }}"
+          - "NPM: {{ npm_version.stdout }}"

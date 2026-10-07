@@ -1,0 +1,8 @@
+---
+# vars file for roles/nginx
+# Add Some test variables
+
+apache_port: 80
+
+#User Add
+user: Kunal Jadhav

@@ -1,0 +1,43 @@
+---
+- name: Install Jenkins
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Install Java 17
+      ansible.builtin.dnf:
+        name: java-17-amazon-corretto
+        state: present
+
+    - name: Add Jenkins repository key
+      ansible.builtin.rpm_key:
+        state: present
+        key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2026.key
+
+    - name: Add Jenkins repository
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+        mode: "0644"
+
+    - name: Install Jenkins
+      ansible.builtin.dnf:
+        name: jenkins
+        state: present
+
+    - name: Start and enable Jenkins
+      ansible.builtin.systemd:
+        name: jenkins
+        state: started
+        enabled: true
+
+    - name: Display Jenkins initial password
+      ansible.builtin.command:
+        cmd: cat /var/lib/jenkins/secrets/initialAdminPassword
+      register: jenkins_password
+      changed_when: false
+
+    - name: Show Jenkins password
+      ansible.builtin.debug:
+        msg: "Jenkins Initial Password: {{ jenkins_password.stdout }}"

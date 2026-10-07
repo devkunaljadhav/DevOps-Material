@@ -1,0 +1,21 @@
+---
+- name: Install Java 17
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Install Java 17
+      ansible.builtin.dnf:
+        name: java-17-amazon-corretto
+        state: present
+
+    - name: Check Java version
+      ansible.builtin.command:
+        cmd: java -version
+      register: java_version
+      changed_when: false
+
+    - name: Display Java version
+      ansible.builtin.debug:
+        msg: "{{ java_version.stderr }}"
