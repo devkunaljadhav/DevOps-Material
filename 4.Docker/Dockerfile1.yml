@@ -1,0 +1,4 @@
+
+FROM ubuntu:24.04
+
+CMD ["echo", "Hello Kunal! My first Docker container is running."]
