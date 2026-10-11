@@ -1,0 +1,7 @@
+
+FROM ubuntu:24.04
+
+ENV STUDENT=Kunal
+ENV COURSE=Docker
+
+CMD ["sh", "-c", "echo Hello $STUDENT! You are learning $COURSE."]
