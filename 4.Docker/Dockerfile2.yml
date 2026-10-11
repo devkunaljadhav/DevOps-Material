@@ -1,0 +1,8 @@
+
+FROM ubuntu:24.04
+
+WORKDIR /app
+
+COPY message.txt /app/message.txt
+
+CMD ["cat", "/app/message.txt"]
