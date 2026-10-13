@@ -1,3 +1,7 @@
+######################################################################################################################
+DAY = 1
+######################################################################################################################
+
 Docker Swarm and Kubernetes are both container orchestration platforms, but they have different strengths and use cases
 
 Docker Swarm is easier to use and is better for smaller applications, while Kubernetes is more robust and better for large-scale applications.
