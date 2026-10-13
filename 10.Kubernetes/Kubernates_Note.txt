@@ -1,0 +1,312 @@
+Docker Swarm and Kubernetes are both container orchestration platforms, but they have different strengths and use cases
+
+Docker Swarm is easier to use and is better for smaller applications, while Kubernetes is more robust and better for large-scale applications.
+
+Docker Swarm is Docker’s native clustering and orchestration tool, designed to manage and scale containerized applications.
+
+While it provides simplicity and integration with Docker, it has several limitations compared to other orchestration solutions like Kubernetes.
+
+
+
+Limitations
+-----------
+
+Docker Swarm is generally considered less scalable than Kubernetes. While it can handle clusters with a reasonable number of nodes and services, Kubernetes is designed for larger-scale deployments and can manage thousands of nodes and pods.
+
+Swarm provides basic load balancing and routing but lacks the advanced capabilities like provided by K8S
+
+
+Kubernetes offers more granular security controls, including Role-Based Access Control (RBAC), network policies, and security policies. Docker Swarm’s security features are less comprehensive in comparison.
+
+Docker Swarm has a smaller community and less industry adoption compared to Kubernetes
+
+Docker carries containers as shown in logo
+And those are carried by K8S as it is a steering for docker with containers
+
+Docker is used to create containers, while Kubernetes is used to manage them
+
+
+               Docker Swarm          Kubernetes
+Setup               Easy                  More complex
+Learning curve       Low                  High
+Scaling               Good                  Excellent
+Networking       Simple          Highly configurable
+Auto-healing       Yes                  Advanced
+Ecosystem       Smaller          Very large
+Cloud support       Limited          Excellent
+Best for       Small/simple deployments    Production, large systems
+
+
+
+
+DockerSwarm                  Kubernetes
+===========                  ==========
+Cluster                      Cluster
+Nodes                 Nodes
+Containers             PODS
+Applications               Containers
+                 Applications
+
+
+
+                                   ====================================================================
+                                                                  Kubernetes
+                                   ====================================================================
+
+Kubernetes is a powerful open-source platform for automating the deployment, scaling, and operation of application containers.
+
+Kubernetes is a Container Orchestration tool
+
+Orchestration is nothing but Cluster
+
+Kubernetes creates Cluster , deploy and manage clusters. Cluster is combination of 1 master and multiple nodes / Minion
+
+Kubernetes master will not take the load, it will distribute load to Nodes / Slaves
+
+Smallest object that Kubernetes can create is POD. WithIn POD, we have Container
+
+Cluster is a bunch of PODS and POD contains docker containers
+
+By using Kubernetes we form a cluster (group of PODS with docker containers)
+
+K8S schedules, runs and manage isolated PODS
+
+Kubernetes does not understand Containers
+
+Kubernetes can understand only PODS
+
+
+
+
+Features of Kubernetes
+---------------------
+
+Orchestration -- Clustering any number of containers on different hardwares / nodes
+Autoscaling
+Auto Healing -- New containers will create in case of containers crash. Same like Docker Swarm
+Load Balancing
+Roll Back  - Going to Previous Versions
+
+
+
+
+Here's a brief history of Kubernetes, from its origins to its current state:
+
+Origins and Predecessors
+========================
+
+Google's Borg:
+-------------
+
+The origins of Kubernetes can be traced back to Google's internal systems, particularly a system called Borg. Borg was a large-scale cluster management system that Google developed internally to manage its vast infrastructure. It allowed Google to deploy, manage, and scale applications across thousands of servers efficiently.
+
+Omega:
+-----
+
+After Borg, Google developed Omega, which was an evolution of Borg. Omega introduced a more flexible and modular architecture. It further refined the ideas of scheduling, resource management, and container orchestration.
+
+The Birth of Kubernetes
+=======================
+
+2014 - Project Launch:
+---------------------
+
+Kubernetes was officially announced by Google in mid-2014. It was initially developed by Google engineers Joe Beda, Brendan Burns, and Craig McLuckie.
+
+Kubernetes was designed based on the lessons learned from Borg and Omega, but it was intended to be open-source and available to the broader community.
+
+Open-Source and Community Involvement:
+--------------------------------------
+
+From the start, Kubernetes was designed as an open-source project, allowing developers from outside Google to contribute. It was released under the Apache 2.0 license, making it freely available for anyone to use and modify.
+
+
+Partnership with the Cloud Native Computing Foundation (CNCF):
+--------------------------------------------------------------
+
+In 2015, Kubernetes was donated to the CNCF, which was formed to foster and sustain the development of cloud-native technologies. This move helped Kubernetes gain significant traction in the open-source community and among enterprises.
+
+
+
+**************************************************************************************
+
+Kubernetes Architecture
+-----------------------
+
+Kubernetes architecture is designed to manage containerized applications across a cluster of machines efficiently.
+
+It follows a master-worker architecture where the master nodes control and manage the worker nodes.
+
+1. Master Nodes  - Control Plane
+2. Worker Nodes
+3. PODS
+4. Networking
+5. Volumes
+6. Namespaces
+7. Services
+
+
+
+Master Nodes (Control Plane)
+============================
+
+The master node is responsible for managing the Kubernetes cluster.
+
+It coordinates all activities within the cluster, including scheduling, scaling, and maintaining the desired state of the system.
+
+Key Components of the Master Node:
+------------------------------------
+
+ 1. API Server (kube-apiserver): The receptionist
+    ----------------------------------------------
+
+    The API server is the entry point for all REST commands used to control the cluster. communicate with user (takes command execute & give output).  kubectl is the command to communicate with API Server
+
+ 2. Scheduler (kube-scheduler): This will take Action
+------------------------------------------------------
+ 
+    The scheduler is responsible for placing the pods onto nodes within the cluster based on resource availability and other constraints. This Kube-Scheduler will communicate with the Nodes
+
+ 3. Controller Manager (kube-controller-manager):
+---------------------------------------------------
+
+    This component runs various controllers that regulate the state of the cluster.Node Controller (which handles node failures), Replication Controller (which maintains the correct number of pods), and more. It just control the k8s objects (n/w, service, Node)
+
+ 4. etcd
+---------
+
+    etcd is a key-value store used by Kubernetes to store all cluster data, including configuration data, state information, and metadata.  Database of the Cluster. It is a critical component, as it serves as the single source of truth for the cluster’s state.
+
+ 5. Cloud Controller Manager(Optional) :
+---------------------------------------
+ 
+    This component interacts with the underlying cloud infrastructure. It handles tasks like managing cloud resources (e.g., load balancers, volumes) in public or private cloud environments. It is responsible to make sure that the actual state is same as desired state.
+
+In Short Cut
+----------
+
+MASTER:
+
+1. API SERVER: Communicate with user (takes command execute & give op)
+2. CONTROLLER: Control the k8s objects (n/w, service, Node)
+3. SCHEDULER: Select the worker node to schedule pods (depends on hw of node)
+4. ETCD: Database of cluster (stores complete info of a cluster ON KEY-VALUE pair)
+
+
+
+Worker Nodes
+===============
+
+Worker nodes are the machines where the actual workload, in the form of containerized applications, runs.
+
+Each worker node contains several components that allow it to run and manage containers.
+
+Key Components of the Worker Node:
+---------------------------------
+
+1. Kubelet:
+   -------
+The kubelet is an agent that runs on every worker node. It ensures that containers are running in a pod as defined by the Kubernetes API. It communicates with the API server on the master node and manages the lifecycle of the containers on its node.
+
+Kubelet is the only component that will communicate with Master
+   
+2. Container Runtime:
+   ------------------
+
+This is the software responsible for running containers.
+
+The most common runtime is Docker, but Kubernetes also supports others like containerd and CRI-O.
+
+The container runtime pulls container images from a registry, unpacks them, and runs the application inside the containers.
+
+3. Kube-Proxy:
+   ----------
+
+Kube-proxy is a network proxy that runs on each worker node. It maintains network rules that allow communication between pods and services within the cluster.  It enables the network routing and load balancing of traffic within the Kubernetes cluster.
+
+Simply Kube-Proxy will Provide IP to the POD
+
+4. PODS:
+   -----
+
+Pods are the smallest and simplest Kubernetes objects. A pod represents a single instance of a running process in your cluster and can contain one or more containers.
+
+Pods are ephemeral, meaning they can be created and destroyed as needed, and are the unit of scaling in Kubernetes.
+
+
+In Short Cut
+------------
+
+WORKER NODES:
+
+1. KUBELET : Its an agent in worker node (it will inform all activities to master)
+2. KUBEPROXY: It deals with Network (ip, networks, ports)
+3. POD: Group of containers (inside pod we have application)
+
+
+
+
+Key Networking Concepts:
+-----------------------
+
+1. Cluster IP: An internal IP address that is assigned to a service within the cluster.
+
+2. NodePort: Exposes a service on a static port on each node’s IP.
+
+3. LoadBalancer: Provisions a load balancer in supported cloud environments to expose services externally.
+
+
+Volumes
+-------
+
+Kubernetes Volumes provide persistent storage to containers within pods, allowing data to persist across pod restarts.
+
+They can be backed by various storage backends, including local storage, cloud storage like AWS EBS
+
+Namespaces
+----------
+
+Namespaces are a way to divide cluster resources between multiple users.
+
+They provide a scope for names, meaning you can have multiple resources with the same name in different namespaces.
+
+Services
+--------
+
+Services are used to access our applications which is on the pods using Cluster IP(internal access) or Load Balancer (external access)
+
+
+
+K8S: CNPCA
+
+C : CLUSTER
+N : NODE
+P : POD
+C : CONTAINER
+A : APPLICATION
+
+In Kubernetes we need to Create Cluster. Cluster can create in 2 ways:  1. Self Managed 2. Cloud Based
+
+CLUSTER TYPES:
+-------------
+
+1. SELF MANAGED: WE NEED TO CREATE & MANAGE THEM
+
+minikube = single node cluster
+kubeadm = multi node cluster (manual)
+kops = multi-node cluster (automation)
+
+2. CLOUD-BASED: CLOUD PROVIDERS WILL MANAGE THEM
+
+AWS = EKS = ELASTIC KUBERNETES SERVICE
+AZURE = AKS = AZURE KUBERENETS SERVICE
+GOOGLE = GKS = GOOGLE KUBERENETS SERVICE
+
+
+Kubectl is the command line tool for Kubernetes
+
+If we want to execute commands we need to use kubectl.
+
+#################################################################################################################
+DAY=2
+#################################################################################################################
