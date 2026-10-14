@@ -314,3 +314,476 @@ If we want to execute commands we need to use kubectl.
 #################################################################################################################
 DAY=2
 #################################################################################################################
+Minikube Setup
+--------------
+
+Requirement
+------------
+
+Launch Ubuntu 24 with t3.medium having min 20GB volume  [use ubuntu 24, t3.medium, 20GB mandatory, dont use ubuntu 26]
+
+Login to Ubuntu machine: username: ubuntu
+
+Install minikube and Kubectl
+ 
+vi minikube.sh
+
+sudo apt update -y
+sudo apt upgrade -y
+sudo apt install curl wget apt-transport-https -y
+sudo curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo mv minikube-linux-amd64 /usr/local/bin/minikube
+sudo chmod +x /usr/local/bin/minikube
+sudo minikube version
+sudo curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl&quot;
+sudo curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256&quot;
+sudo echo "$(cat kubectl.sha256) kubectl" | sha256sum --check
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+sudo minikube start --driver=docker --force
+
+   
+
+KUBECTL:
+--------
+kubectl is the CLI which is used to interact with a Kubernetes cluster.
+
+We can create, manage pods, services, deployments, and other resources.
+
+The configuration of kubectl is in the $HOME/.kube directory.
+
+-- minikube status
+
+-- kubectl get nodes
+
+-- kubectl get pods
+
+PODS :
+=======
+ 
+It is a smallest unit  of deployment in K8's.
+It is a group of containers.
+Pods are ephemeral (short living objects)
+Mostly we can use single container inside a pod but if we required, we can create multiple containers inside a same pod.  
+when we create a pod, containers inside pods can share the same network namespace, and can share the same storage volumes .
+While creating pod, we must specify the image, along with any necessary configuration and resource limits.
+K8's cannot communicate with containers, they can communicate with only pods.
+
+We can create this pod in two ways,
+
+1. Imperative(command)
+
+2. Declarative (Manifest file) - can be reuse - in real time we go with declarative
+
+By default, one pod has one container, if required we can create, if you create multiple containers in a single pod, all containers inside the pods will share the same volume
+
+
+1. Imperative(command)
+-----------------------
+
+Example:
+--------
+
+-- kubectl run pod1 --image nginx    [Creating  pod with name pod1 with image nginx]
+
+-- kubectl get pods/pod/po           [To get the pods , can use pods/po/pods also]
+
+-- kubectl get pod -o wide           [To get details about the pod]
+
+-- kubectl describe pod pod1         [To get more details about the pod]
+
+-- kubectl delete pod pod1           [To delete the pod]
+
+-- kubectl get events
+
+Example 2:
+---------
+
+-- kubectl run reyaz --image nginx  [This will create a pod name reyaz , with httpd image ]
+
+-  kubectl get pods
+
+-- kubectl logs reyaz  
+
+-- kubectl exec -it reyaz -- /bin/bash   [to connect to the pod inside]
+   cd /usr/share/nginx/html
+   cat i ndex.html
+
+-- kubectl delete pod reyaz   [This will delete the pod reyaz]
+
+
+The above approach we don't do, because no need to create PODS manually , so lets go for manifest declarative approach
+
+
+================================================
+
+2. Declarative (Manifest file)
+-----------------------------
+
+In manifest file we have these mandatory parameters
+
+---------------------
+apiVersion:
+kind:
+metadata:
+spec:
+---------------------
+
+What is apiVersion?
+-------------------
+
+apiVersion: Specifies the API version used for the Deployment object. apps/v1 is the stable API version for managing deployments. Depending on Kubernetes object we want to create, there is a corresponding code library we want to use. apiVersion refers to Code Library
+
+ Examples:
+---------
+
+POD : v1
+Service: v1
+NameSpace: v1
+Secrets: v1
+Replicaset: apps/v1
+Deployment: apps/v1
+jobs: batch/v1
+
+
+
+kubectl api-versions
+
+What is kind ?
+--------------
+
+Refers to Kubernetes object which we want to create.
+
+Example:
+--------
+kind: Pod
+kind: Deployment
+kind: Service
+kind: Ingress
+kind: job
+
+What is metadata?
+----------------
+
+Additional information about the Kubernetes object like name, labels etc
+
+name: The name of the Deployment/Pod/Service.
+labels: Key-value pairs used for organizing and selecting objects
+
+
+What is spec?
+------------
+
+Contains docker container related information like, image name, environment variables , port mapping etc
+
+How many number of pods (Replica)
+About container and that should run on which image
+On which port it should expose
+Labeling the entire deployment etc
+
+
+
+Sample manifest file
+--------------------
+
+apiVersion: v1
+kind: Pod  -- creating pod
+metadata:
+  name: pod1 -- name of the pod
+spec:  -- specifications
+  containers:
+    - image: nginx  -- image  name
+      name: cont1 -- container name
+
+-----------------
+
+vi pod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+spec:
+  containers:
+    - image: nginx
+      name: cont1
+
+-- kubectl create -f pod.yml    [ To create a pod using manifest]
+
+-- kubectl describe pod pod1    [ To describe pod ]
+
+-- kubectl delete pod pod1      [ To delete the pod ]
+
+DRAWBACK: once pod is deleted we can't retrieve the pod.
+
+If any pod deleted, it is deleted, no HA, for HA use ReplicaSET also called RS
+
+KUBECOLOR:
+
+wget https://github.com/hidetatz/kubecolor/releases/download/v0.0.25/kubecolor_0.0.25_Linux_x86_64.tar.gz
+tar -zxvf kubecolor_0.0.25_Linux_x86_64.tar.gz
+./kubecolor
+chmod +x kubecolor
+mv kubecolor /usr/local/bin/
+
+kubecolor get po
+
+-- kubectl create -f pod.yml  
+
+-- kubecolor get po
+
+======================================================================================================================================
+
+                                                             
+ 
+=======================================================================================================================================
+
+In last class, we created a pod with manifest file, but we deleted that pod.
+
+If any pod deleted, it is deleted, no HA, for HA use ReplicaSET also called RS
+
+
+=================
+REPLICASET
+=================
+
+This is used for managing multiple replicas of pod to perform activities like load balancing and autoscaling
+
+Setup minikube with ubuntu 24 as per installation process
+
+
+It will create replicas of same pod.
+
+we can use same application with multiple pods.
+
+Even if one pod is deleted automatically it will create another pod. It has self healing mechanism
+
+Depends on requirement we can scale the pods.
+
+We create rs --> rs wil create pods
+
+LABELS:
+-------
+
+As we are creating multiple pods with same application, all these pods have different names but how to group all of them as we have 1 application with multiple pods. So we can give a label to group them
+
+Individual pods are difficult to manage because they have different names
+so we can give a common label to group them and work with them together
+
+SELECTOR  
+--------
+
+It is used to select pods with same labels
+
+For replicaset use apiversion as apps/v1
+
+how to find the apiresources to write in manifest file
+
+kubectl api-resources
+
+vi replicaset.yml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: ib-rs    ---------- Name of the Replicaset
+  labels:
+    app: bank
+spec:     ------------- this spec is for PODS
+  replicas: 3   --------- how many number of pods
+  selector:
+    matchLabels:  -Ensures only pods with label app: bank are part of this Replicaset. if there is any pod with label bank, it will be a part of this replicaset
+      app: bank
+  template:            ------------ Ensures the pods get labeled as app: bank
+    metadata:
+      labels:
+        app: bank
+    spec:  ----------------- this spec is for containers
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+
+ 
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: ib-rs
+  labels:
+    app: ib
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ib
+  template:  
+    metadata:
+      labels:
+        app: ib
+    spec:  
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+
+
+
+
+
+Students: In your practise , create 3 more replica set mobilebanking, insurances and loans
+change label: app : internetbanking, app: mobilebanking, app: insurance , app: loans
+
+-- kubectl create -f replicaset.yml
+
+-- kubectl get replicaset
+
+       (or)
+
+-- kubectl get rs
+
+-- kubectl get rs -o wide  [This command will get more details about ReplciaSets]
+
+-- kubectl describe rs ib-rs  [This will describe about internetbanking-rs ]
+
+-- kubectl get pods
+
+-- kubectl get pods --show-labels   [This will list the pods with Labels]
+
+If you delete any pod, automatically new pod will be created, if you want to watch live, open another terminate and give.
+
+-- kubectl get pods --watch
+
+-- kubectl get pods
+
+-- kubectl delete pods pod-id      [First new pod create and the existing pod will be deleted]
+
+-- kubectl get pods --show-labels  [New pod got created, this is called ReplicaSet, if one pod delete , another pod will get created automatically]
+
+-- kubectl get pods -l app=bank  [This will list all the pods with label bank, l = label]
+
+-- kubectl delete pods -l app=bank  [To delete all the pods wit label bank]
+
+Note: Replicaset will take image details from manifest file -- replicaset.yml
+
+==============
+SCALE REPLICAS - Scale Out and Scale In
+==============
+
+Scale Out
+--------
+
+First open anotherwindows live
+
+-- kubectl get pods --watch
+
+
+-- kubectl get rs   [To list the replicasets]
+
+-- kubectl scale rs/ib-rs --replicas=10  [Now see pods creating live]
+
+Scale In
+--------
+
+-- kubectl scale rs/ib-rs --replicas=5  [Now see pods creating live]
+
+LIFO: LAST IN FIRST OUT.
+
+IF A POD IS CREATED LASTLY IT WILL DELETE FIRST WHEN SCALE IN
+
+Note: This Scale out and in is manual, later we learn how to automate
+
+Now, all pods are running with ib-image:latest image , but if i want to change the image to mobilebanking and update the POD, not possible in ReplicaSet
+
+-- kubectl describe pod -l app=bank | grep -i ID   [ALl pods are using ib-image:latest]
+
+Update the image in the replicaset, you cannot update in yml file, it will create a new replicaSet so there is a command to edit current replicaset
+
+-- kubectl edit rs/ib-rs    [change internetbankingrepo to insurance]
+
+-- kubectl describe pod -l app=bank | grep -i ID  [Still it shows internetbanking, image is not change , that's the problem with Replica SET, We cannot update the application]
+
+
+vi replicaset.yml  -- change to insurance
+
+-- kubectl apply -f replicaset.yml    [This will give error that ib-rs already exits. So need to create a new RS again]
+
+-- kubectl get pods --show-labels
+
+-- kubectl describe pod -l app=bank | grep -i ID   [you still see old image internetbanking ]
+
+But if you scale out, new pods will contains insurance repo
+
+-- kubectl scale rs/ib-rs --replicas=5
+-- kubectl describe pod -l app=bank | grep -i ID  [you see mobilebanking . only new image are insurance.
+                                                   This is the drawback of replicaset]
+
+Using ReplicaSet we cannot roll out the application
+
+Advantage
+-- self healing
+-- scaling
+
+Drawbacks
+ -- we cannot roll in and roll out, we cant update the applications using ReplicaSet, lets use DEPLOYMENT
+
+rs ---> pods
+
+kubectl delete rs ib-rs
+~
+
+ReplicationController:
+=======================
+
+Same as ReplicaSet. It also used for handling multiple replicas of specific pod. But it doesn't contain selector and its child field matchField. matchField where it will search for pods based on a specific label name and adds them to Cluster
+                                                                                             
+
+Kind : ReplicationController
+ 
+This below code doesn't contain matchLabels Field
+******************************************
+
+apiVersion: apps/v1
+kind: ReplicationController
+metadata:
+  name: ib-rs
+  labels:
+    app: bank
+spec:
+  replicas: 3
+  template:  
+    metadata:
+      labels:
+        app: bank
+    spec:  
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+Replication Controller
+---------------------
+
+The Replication Controller is the original form of replication in Kubernetes
+
+The Replication Controller uses equality-based selectors to manage the pods.
+
+The rolling-update command works with Replication Controllers
+
+Replica Controller is deprecated and replaced by ReplicaSets.
+
+Replica Set  
+------------
+
+ReplicaSets are a higher-level API that gives the ability to easily run multiple instances of a given pod
+
+ReplicaSets Controller uses set-based selectors to manage the pods.
+
+The rolling-update command won’t work with ReplicaSets.
+
+Deployments are recommended over ReplicaSets.
+#################################################################################################################################################################
+Day=3
+#################################################################################################################################################################
