@@ -787,3 +787,617 @@ Deployments are recommended over ReplicaSets.
 #################################################################################################################################################################
 Day=3
 #################################################################################################################################################################
+=====================
+ DEPLOYMENT
+=====================
+
+Kubernetes Deployment
+---------------------
+Kubernetes deployment is a high-level resource object by which you can manage the deployment and scaling of the applications while maintaining the desired state of the application. You can scale the containers with the help of Kubernetes deployment up and down depending on the incoming traffic. If you have performed any rolling updates with the help of deployment and after some time if you find any bugs in it then you can perform rollback also. Kubernetes deployments are deployed with the help of CLI like Kubectl it can be installed on any platform.
+
+Before, we used ReplicaSet, ReplicaSet will create pods
+
+Now, Deployment can create ReplicaSet and ReplicaSet will create PODS
+
+deployment create rs---> rs will create Pods
+
+We can update the application.
+ 
+
+
+ 
+
+First delete the existing ReplicaSet
+ 
+-- kubectl delete rs ib-rs
+
+-- kubectl get rs
+
+-- kubectl get pods
+
+
+copy replicaset.yml to deployment.yml
+
+cp replicaset.yml deployment.yml
+
+vi yml --> Just change  "kind: Deployment" and "name: ib-deployment"
+-----------------------------------------------------------------
+
+and image to internetbanking for to understand better
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ib-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+-- kubectl create -f deployment.yml
+
+-- kubectl get deploy   or kubectl get deployments
+
+-- kubectl get deploy -o wide
+
+-- kubectl get rs  -----> Deploy will create ReplicaSet
+
+-- kubectl describe deploy ib-deployment
+
+-- kubectl get pods
+
+[FYI: delete the deployment: kubectl delete deploy deploymentname]
+
+Now lets scale out and Scale IN
+
+Scale Out
+---------
+
+-- kubectl scale deploy/ib-deployment --replicas=10
+
+-- kubectl get pods
+
+
+Scale In
+--------
+
+-- kubectl scale deploy/ib-deployment --replicas=5
+
+-- kubectl get pods
+
+What ever Replica set is doing Deployment is also doing the same thing
+
+if you delete any pod, it will create immediately automatically
+
+-- kubectl get pods
+
+-- kubectl delete pod pod-id
+ 
+-- kubectl describe pod -l app=bank | grep -i ID
+
+(or)
+
+-- kubectl describe pods | grep -i image   [It shows all internetbankingrepo image]
+
+***************** Now what Deployment do additional thing is to change the application ***************
+
+First watch pods in another terminal
+
+-- kubectl get po --watch
+
+-- kubectl edit deploy/ib-deployment   [change to mobilebanking]
+
+watch pods in another terminal , first it will create a new pods and then terminate old ones
+
+-- kubectl describe pods | grep -i image [you can see now mobilebanking image]
+
+
+kubectl get events --sort-by=.metadata.creationTimestamp
+
+
+============
+RollOut Few commands
+============
+
+-- kubectl rollout history deploy/ib-deployment
+
+-- kubectl rollout undo deploy/ib-deployment   [It will go back to previous application / image ]
+
+-- kubectl get pods  [Pods are terminating and creating new pods with new image, this was not possible in ReplicaSet]
+
+-- kubectl describe pods | grep -i image
+
+-- kubectl rollout pause deploy/ib-deployment  --- it is like lock, cannot undo, cannot rollout to previous
+
+-- kubectl rollout undo deploy/ib-deployment  -- not possible
+
+-- kubectl rollout resume deploy/ib-deployment
+
+-- kubectl rollout undo deploy/ib-deployment -- now possible
+
+-- kubectl rollout status deploy/ib-deployment
+
+ 
+Deployment has 2 Strategies
+--------------------------
+Rolling update: This is Default, When you update the application, Rolling update will delete one pod and create . One by one
+
+Recreate: Delete all pods and create again- Downtime. Not recommended
+
+
+Blue-Green Deployment: 🟦 Blue = old version, 🟩 Green = new version, Switch traffic only when the new version is fully ready
+Canary Deployment:  Roll out new version to a small set of users, then gradually increase.
+
+Example: see strategy: Recreate
+    -------
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ib-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 3
+  strategy:
+     type: Recreate
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+====================================================
+
+If you want port to expose , use below code
+
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+        ports:
+        - containerPort: 8080   # Port inside the container
+          hostPort: 8080        # Port on the host machine
+
+
+🔹 Explanation of Changes
+---------------------------
+✅ containerPort: 8080 → The app runs inside the container on port 8080.
+✅ hostPort: 8080 → The container maps its 8080 port to the same port on the host machine.
+
+🔹 Important Notes on hostPort
+----------------------------------
+hostPort directly binds the container port to the host.
+It works only on worker nodes where the pod runs.
+If multiple pods run on the same node, you cannot use the same hostPort for all of them.
+Recommended alternative: Instead of hostPort, use a Kubernetes Service (NodePort or LoadBalancer) to expose the Deployment.
+------------------------
+
+By default, a ReplicaSet (RS) only ensures that a specific number of Pods are running. However, it does not provide network access to those Pods externally.
+
+✅ To access your application from the internet, you need a Kubernetes Service.
+
+
+=======================================================================================================================================
+
+=======================================
+🚀 Kubernetes Manifest: 1 Pod with 2 Containers
+===============================================
+
+In Kubernetes, a Pod can run multiple containers that share the same network and storage. Here’s how to create a single Pod with two containers inside it.
+
+vi pod-two-containers.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: two-container-pod
+  labels:
+    app: multi-container
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+    ports:
+    - containerPort: 80
+  - name: busybox-container
+    image: busybox
+    command: ["sh", "-c", "while true; do echo 'Hello from BusyBox'; sleep 10; done"]
+
+
+
+-c: Tells sh to execute the following string command
+
+-- kubectl apply -f pod-two-containers.yaml
+
+-- kubectl get pods    [we get single pod but 2/2 meaning, 2 containers]
+
+-- kubectl logs two-container-pod -c busybox-container
+ 
+-- kubectl logs two-container-pod -c nginx-container
+
+-- kubectl exec -it two-container-pod -c nginx-container -- sh       [-c: container]
+
+   cd /usr/share/nginx/html
+
+-- kubectl exec -it two-container-pod -c busybox-container -- sh
+   
+   ls
+
+
+
+Kubernetes JOBS
+================
+
+A Kubernetes Job is used to run a task once or for a limited number of times.
+A Kubernetes Job is a controller used for running one-time or batch workloads that must complete successfully.”
+
+Unlike a Deployment:
+
+Deployment → runs applications continuously
+Job → runs a task and exits after completion
+
+Examples:
+
+Database backup
+Sending reports
+Batch processing
+Data migration
+Script execution
+CI/CD task
+
+User → Creates Job YAML
+        ↓
+Kubernetes API Server
+        ↓
+Job Controller
+        ↓
+Creates Pod
+        ↓
+Pod Executes Task
+        ↓
+Task Completes
+        ↓
+Pod Stops
+
+TYPES OF KUBERNETES JOBS
+-------------------------
+
+| Type             | Purpose                           |
+| ---------------- | --------------------------------- |
+| Non-Parallel Job | One task                          |
+| Parallel Job     | Multiple tasks together           |
+| Work Queue Job   | Workers consume tasks dynamically |
+| CronJob          | Scheduled jobs                    |
+
+
+1. NON-PARALLEL JOB
+---------------------
+1 pod
+1 task
+1 completion
+
+Example: Take DB backup once
+
+vi singlejob.yml
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: single-job
+
+spec:
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox
+        command: ["sh", "-c", "echo Hello Students && sleep 5"]
+
+      restartPolicy: Never
+
+
+
+kubectl create -f singlejob.yml
+
+
+kubectl get jobs
+
+kubectl get pods
+
+kubectl logs <pod-name>
+
+Job runs --> Task completes --> Pod exits successfully
+
+
+restartPolicy: “What should happen if container stops or fails?” [Always, OnFailure, Never]
+-------------------------------
+Always: Always restarts the container if it exits or crashes.Kubernetes restarts it again.
+        Use Case: Default for Deployments & ReplicaSets. Because apps should run forever
+
+Container starts
+↓
+Container exits
+↓
+Kubernetes restarts it
+↓
+again and again
+
+----------------------------------                                      
+OnFailure: Restarts the container only if it exits with an error (non-zero exit code). Do NOT restart if task completed successfully
+           Use case: Jobs & CronJobs
+
+Task complete
+↓
+No restart
+
+or
+
+Container crashes
+↓
+Kubernetes retries
+
+Example: Database backup job. If backup fails: retry automatically
+---------------------------
+                                                                     
+Never: Never restarts the container, even if it fails or stop. Use Case: Testing/debugging Jobs/ Jobs & CronJobs (One-time execution)
+       
+
+| Value     | Meaning                  |
+| --------- | ------------------------ |
+| Always    | Restart container always |
+| OnFailure | Restart only if failed   |
+| Never     | Never restart            |
+
+
+Note: We can add completions also in Non-Parallel Jobs. Completions meaning, how many number of jobs should be completed
+It will run 5 times jobs to complete. But one at a time. meaning one by one
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: single-job
+
+spec:
+  completions: 5
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox
+        command: ["sh", "-c", "echo Hello Students && sleep 5"]
+
+      restartPolicy: Never
+
+
+NAME               READY   STATUS      RESTARTS   AGE
+single-job-8zrwn   0/1     Completed   0          50s
+single-job-9cw4p   0/1     Completed   0          41s
+single-job-b24kj   0/1     Completed   0          23s
+single-job-b4dm2   0/1     Completed   0          32s
+single-job-h7887   0/1     Completed   0          14s
+
+
+
+
+2. PARALLEL JOB
+---------------
+Run multiple pods simultaneously.
+
+Example: Resize 1000 images faster, instead of 1 worker , use multiple workers
+
+| Field       | Meaning                       |
+| ----------- | ----------------------------- |
+| completions | total successful tasks needed |
+| parallelism | how many run together         |
+
+
+vi parallel.yml
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: parallel-job
+ 
+spec:
+  completions: 5
+  parallelism: 2
+
+  template:
+    spec:
+      containers:
+      - name: worker
+        image: busybox
+        command: ["sh", "-c", "echo Processing Task && sleep 10"]
+
+      restartPolicy: Never
+
+
+Need 5 successful pods(completions), Run only 2 pods(parallelism) simultaneously
+
+kubectl create -f parallel.yml
+
+kubectl get pods
+
+kubectl logs <pod-name>
+
+
+
+Pod1 + Pod2 running
+        ↓
+Complete
+        ↓
+Pod3 + Pod4 running
+        ↓
+Complete
+        ↓
+Pod5 running
+        ↓
+Job finished
+
+3. WORK QUEUE JOB
+-----------------
+
+Workers pull tasks dynamically from queue.
+
+Examples:
+| Company | Queue Processing     |
+| ------- | -------------------- |
+| Netflix | Video encoding       |
+| Amazon  | Order processing     |
+| Uber    | Ride events          |
+| YouTube | Thumbnail generation |
+
+
+Queue
+ ↓
+Worker Pods
+ ↓
+Tasks processed
+
+Kubernetes:
+❌ does NOT provide queue
+
+Usually queue is:
+
+RabbitMQ
+Kafka
+Redis
+AWS SQS
+
+Kubernetes Job only runs worker pods.
+
+
+vi queue.yml
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: queue-job
+
+spec:
+  parallelism: 3
+
+  template:
+    spec:
+      containers:
+      - name: worker
+        image: busybox
+        command:
+        - sh
+        - -c
+        - |
+          echo "Worker processing task"
+          sleep 20
+
+      restartPolicy: Never
+
+
+3 worker pods start
+Each worker processes tasks . Note: -c command
+
+kubectl create -f queue.yml
+
+kubectl get pods
+
+kubectl logs <pod-name>
+
+
+Will Kubernetes Start New Pods Again in Queue job? NO [because No completions specified and No queue system exists]
+-----------------
+Kubernetes Job itself:
+❌ does NOT continuously watch queue, its run only pods
+we can add completion if required as completions: 10[3 pods start as parallelism 3. continues until 10 completions]
+
+Real example
+-----------    
+RabbitMQ / Kafka / Redis Queue
+          ↓
+Worker Pods
+          ↓
+Workers keep polling queue
+
+Work Queue Job
+
+Kubernetes only starts workers.
+-----------------------------
+Worker application handles(The application code controls this.):
+
+Queue polling
+Task consumption
+Exit logic
+
+“In Kubernetes work queue patterns, Kubernetes only manages worker pod creation. Continuous task consumption is handled by the application logic polling external queues like RabbitMQ or Kafka. New pods are created only if completions are pending or pods fail.”
+
+
+ Kubernetes CronJob Example
+===============================
+
+A Kubernetes CronJob is used to schedule jobs to run at specific times, just like a Linux cron job. It is useful for tasks such as backups, periodic data processing, or sending scheduled reports.
+
+
+This CronJob prints "Hello from Kubernetes!" every minute.
+
+
+vi cron.yml
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name:  hello-cronjob
+spec:
+  schedule: "*/1 * * * *"  # Runs every minute
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello-container
+            image: busybox
+            command: ["sh", "-c", "echo Hello from Kubernetes!"]
+          restartPolicy: Never  # Ensure job runs only once per schedule
+
+
+-- kubectl apply -f cron.yaml
+
+-- kubectl get cronjobs
+
+-- kubectl describe cronjob hello-cronjob
+
+
+🔹 View Logs of Last Run
+---------------------------
+
+-- kubectl get pods  # Get the latest pod name
+
+-- kubectl logs <POD_NAME>
+
+-- kubectl get cronjob
+
+-- kubectl delete cronjob hello-cronjob
+#################################################################################################################################################################
+Day=4
+#################################################################################################################################################################
