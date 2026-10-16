@@ -1401,3 +1401,627 @@ spec:
 #################################################################################################################################################################
 Day=4
 #################################################################################################################################################################
+minikube is on single node, if that single nodes down all my pods are gone
+
+Dockerswarm we launched manually, worker nodes are manually created but here now we can automate servers
+
+how to work on Multi-Node cluster
+
+
+
+==============================
+   KOPS
+==============================
+
+Kops (Kubernetes Operations) is a command-line tool that helps you create, manage, upgrade, and destroy Kubernetes clusters on cloud providers like AWS, GCP, and more.
+
+It's often referred to as the "kubectl" for clusters, and it is a popular choice for creating production-grade Kubernetes clusters on AWS.
+
+Advantages
+-------------
+Automate infra creation in AWS and GCE Kubernetes cluster
+
+Deploys HA K8S master
+
+Supports rolling updates
+
+supports homogenous and heterogenous clusters.
+
+save time and work.
+
+Alternatives:  EKS, MINIKUBE, KUBEADM, RANCHER, TERRAFORM
+------------
+
+ KOPS will just create Production level Cluster, its a 3rd party tool
+
+=======================================================
+                          KOPS Setup using attached script
+========================================================
+
+
+Note: just try to delete now worker node or master node, ASG will create it immediately
+
+-- kops get cluster
+
+-- kubectl get nodes/no
+
+-- kubectl get nodes -o wide
+
+-- Normally, kubectl uses your local $HOME/.kube/config file for authentication
+   cd /root/.kube/
+   cat config   [This contains certificates and keys for user to authenticate cluster]
+
+
+===========================
+Few Cluster Admin Activities
+==========================
+
+ Currently we have now only 1 master nodes and 2 worker nodes
+
+KOPS commands are used for cluster activities.
+KUBECTL commands are used for resource activities.
+
+annotations
+----------
+kops get ig
+
+ig =  instance group
+
+WorkerNodes = nodes-ap-south-1a
+WorkerNodes = nodes-ap-south-1b
+
+Control Plane: control-plane-ap-south-1a
+
+Scale Out Worker Nodes
+----------------------
+
+-- kops edit ig --name=reyaz.k8s.local nodes-ap-south-1a
+           --> max size = 2, min size = 2  [It shows 1 as in 1a we have only 1 worker node, change to 2]
+
+-- kops update cluster --name reyaz.k8s.local --yes --admin
+
+-- kops rolling-update cluster --yes
+
+See in AWS Console , 2 additional worker nodes got created
+
+-- kubectl get nodes   [takes time to show]
+
+Scale out Master Nodes
+----------------------
+“Multiple Kubernetes control planes provide High Availability by eliminating single points of failure. If one control plane node fails, other control planes continue managing the cluster without downtime.”
+
+Usually API Server sits behind:Load Balancer
+
+kubectl
+   ↓
+Load Balancer
+   ↓
+CP1  CP2  CP3
+
+Requests automatically go to healthy master.
+
+-- kops edit ig --name=reyaz.k8s.local control-plane-ap-south-1a
+           --> max size = 2, min size = 2 [It shows 1 as we have only 1 CP, change to 2 for HA]
+
+-- kops update cluster --name reyaz.k8s.local --yes --admin
+
+-- kops rolling-update cluster --yes
+
+See in AWS Console , 1 additional Master nodes got created
+
+-- kubectl get nodes  [takes time to show]
+
+*************************************************************************
+IF ERROR
+=======
+🔹 Step 3: If Kubelet is Installed but Not Found in Systemd
+If kubelet is installed but still not found in systemd, try reloading systemd:
+
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+If the issue persists, manually add the systemd service file:
+
+sudo nano /etc/systemd/system/kubelet.service
+
+[Service]
+ExecStart=/usr/bin/kubelet
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+[Install]
+WantedBy=multi-user.target
+Then reload and start:
+
+sudo systemctl daemon-reload
+sudo systemctl enable kubelet
+sudo systemctl restart kubelet
+
+🔹 Step 4: Check Logs for Errors
+If kubelet is still failing, check logs:
+
+sudo journalctl -u kubelet -f
+
+
+*******************************************************
+
+
+
+vi deployment.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ib-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+-- kubectl create -f deployment.yml
+
+- - kubectl get pods
+
+-- Kubectl get pods -o wide
+
+-- kubectl get nodes -o wide
+
+Manager node will not host pods himself, K8S will create pods only in worker nodes
+
+-- kubectl get pods -o wide   [see the nodes, pods spread across nodes equally]
+
+Example: if you want 5 pods , edit yml file and update replicas to 5
+
+-- kubectl apply -f deployment.yml
+
+-- kubectl get no -o wide
+
+
+
+Example: Lets do a new deployment again
+--------------------------------------
+
+Before that clean up
+
+-- kubectl get deployments
+
+-- kubectl delete deploy ib-deployment
+
+-- kubectl get pods
+
+vi deploynew.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mb-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/mb-image:latest
+
+-- kubectl create -f deploynew.yml
+
+-- kubectl get po -o wide   [Now all pods are spread across 4 worker nodes]
+
+If you want to scale out pods
+-------------------------
+
+-- kubectl scale deploy/mb-deployment --replicas=10
+
+-- kubectl get pods -o wide
+
+If you want to scale in pods
+-------------------------
+
+-- kubectl scale deploy/mb-deployment --replicas=4
+
+-- kubectl get pods -o wide
+
+kops delete cluster --name reyaz.k8s.local --yes
+
+
+
+kubectl
+ ↓
+API Server
+ ↓
+etcd stores desired state
+ ↓
+Scheduler selects node
+ ↓
+Kubelet creates pod
+ ↓
+Container runtime starts containers
+
+
+============================================================================================================================================
+ 
+===============
+NAMESPACES
+===============
+
+Namespaces are used to Logically separate resources inside a Kubernetes cluster. Like Folders inside Kubernetes
+
+Generally we cannot create multiple Cluster for each team(expensive), instead we create a NameSpaces in one Cluster for each team
+
+Namespaces will not talk to each other, its an isolated space in one Cluster
+
+Each namespaces can see their own pods
+
+
+
+TYPES:
+=======
+
+| Namespace       | Purpose                        |
+| --------------- | ------------------------------ |
+| default         | User workloads                 |
+| kube-system     | Kubernetes internal components |
+| kube-public     | Public readable resources, such as cluster info    |
+| kube-node-lease | Node heartbeat info, monitoring nodes|
+
+Pods can still communicate across namespaces.
+ 
+Using: servicename.namespace.svc.cluster.local
+
+Example:
+
+mysql.dev.svc.cluster.local
+
+Namespaces in Kubernetes provide logical isolation of resources within the same cluster. They help organize workloads, enforce RBAC, quotas, and separate environments like dev, test, and production
+
+
+
+Note: Every component of kubernetes cluster is going to create in the form of POD, All these PODS are stored in Kube-System Namespace
+
+-- kubectl get namespace/ns
+
+-- kubectl get pods
+
+-- kubectl describe pod   [ By default pods are created in default namespace]
+
+
+-- kubectl get pods -A  [This will list all pods from all namespaces]
+
+-- kubectl get pods --all-namespaces  [This can also be used to get all pods from all namespaces]
+
+-- kubectl get pods -n default [This will list pods wchich is in default namespace]
+
+-- kubectl get pods -n kube-node-release  -- no pods here
+
+-- kubectl get pods -n kube-public  -- no pods here
+
+-- kubectl get pods -n kube-system  [all kubeproxy, apiserver, controller, schedular pods are here]
+
+
+Lets create a pods in namespaces
+--------------------------------
+
+-- kubectl get ns
+
+-- kubectl create ns dev
+
+-- kubectl get ns
+
+Currently I am in default namespace, how to check
+
+-- kubectl config view   [ output doesn't show namespace,  if you don't see any namespace, this is default]
+
+-- kubectl config set-context --current --namespace=dev  [This is use to switch to move from another namespace]
+
+-- kubectl config view  [ Now this output show dev namespace ]
+
+-- kubectl get pods  [Now you are in dev namespace, now you cannot see any pods of other namespace]
+
+== create a new pods in this namespace
+
+-- kubectl run dev1 --image nginx
+-- kubectl run dev2 --image nginx
+-- kubectl run dev3 --image nginx
+
+-- kubectl get pods
+
+=== lets create few pods in PROD namespace
+------------------------------------------
+
+kubectl get ns
+
+kubectl create ns prod
+
+kubectl get ns
+
+kubectl config view  -- see the output, we are in dev
+
+kubectl config set-context --current --namespace=prod   --- now change the namespace to prod
+
+kubectl config view
+
+kubectl get po
+
+you are in prod namespace , but if you want to see from another namespace
+
+kubectl run prod1 --image nginx
+kubectl run prod2 --image nginx
+kubectl run prod3 --image nginx
+
+kubectl get po
+
+kubectl get po -n default
+kubectl get po -n dev
+kubectl get po -n prod
+
+kubectl delete pod dev1 -n dev   [Deleting the  pod dev2 in dev namespace]
+
+kubectl delete pod prod1 -n prod   [Deleting the  pod prod1 in prod namespace]
+
+kubectl delete pod --all : [To delete all pods in the namespace]
+
+If require: kubectl delete namespace <namespace-name>
+
+In this case, anyone can access/delete/create pods in any namespace. Which is not good. for this we need restrict users to access namespaces using RBAC.
+
+
+
+Image Pull Policy
+-----------------
+
+“ImagePullPolicy controls whether kubelet downloads a fresh image or uses existing local image.”
+
+
+ImagePullPolicy defines when Kubernetes pulls a container image from the registry.
+
+Image Pull Policy in Kubernetes defines when Kubernetes should pull (download) a container image from a container registry.
+
+| Policy           | Meaning                                       |
+| ---------------- | --------------------------------------------- |
+| **Always**       | Always pull image before starting container   |
+| **IfNotPresent** | Pull only if image not available locally. Most common in Production |
+| **Never**        | Never pull; image must exist locally          |
+
+
+Advantage
+
+✅ Faster pod startup
+✅ Less network usage
+
+Default Behavior (Very Important)
+--------------------------------
+
+If imagePullPolicy is not specified:
+
+
+| Image Tag     | Default Policy |
+| ------------- | -------------- |
+| `:latest`     | `Always`       |
+| Any other tag | `IfNotPresent` |
+ 
+
+Example:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-always
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.25
+    imagePullPolicy: Always or IfNotPresent or Never
+
+| Scenario                       | Result                 |
+| ------------------------------ | ---------------------- |
+| Policy = Always                | Pulls image every time |
+| Policy = IfNotPresent          | Uses cached image      |
+| Policy = Never + image missing | Pod fails              |
+
+Which policy used with latest tag?
+------------------------------------
+✅ Always
+
+Why latest tag not recommended in production?
+---------------------------------------------
+Because:
+❌ unpredictable deployments
+❌ version inconsistency
+
+What happens if imagePullPolicy=Never and image missing?
+----------------------------------------------------------
+Pod fails with:
+
+ErrImageNeverPull
+
+Which component pulls images?
+---------------------------
+✅ kubelet
+
+using:
+
+containerd
+CRI-O
+Docker runtime
+
+What is ErrImagePull?
+---------------------
+Kubernetes unable to pull image.
+Initial failure
+
+Reasons:
+
+wrong image name
+registry issue
+authentication issue
+
+What is ImagePullBackOff?
+-------------------------
+Kubernetes repeatedly retrying image pull.
+Retry backoff state
+
+=========================================
+🚀 POD PHASES (Official States)
+=========================================
+
+| Pod State | Meaning                           |
+| --------- | --------------------------------- |
+| Pending   | Pod accepted but not running yet  |
+| Running   | Pod running successfully          |
+| Succeeded | Container completed successfully  |
+| Failed    | Container exited with failure     |
+| Unknown   | Kubernetes cannot determine state |
+
+=========================================
+🚀 COMMON POD ERRORS
+=========================================
+
+CrashLoopBackOff : Container repeatedly crashing and restarting.
+----------------
+Reasons: app crash, bad config, DB unavailable
+
+Crash
+ ↓
+Restart
+ ↓
+Crash
+ ↓
+Backoff delay
+
+Check:
+-----
+kubectl logs pod-name
+kubectl describe pod pod-name
+
+ImagePullBackOff: Kubernetes retrying image pull after failure.
+----------------
+Reasons: wrong image name, private registry auth failure, image not found
+
+ErrImagePull: Initial image pull failed.
+------------
+
+| ErrImagePull  | ImagePullBackOff |
+| ------------- | ---------------- |
+| First failure | Retry state      |
+
+CreateContainerConfigError : Invalid container configuration.
+-----------------------
+Reasons: missing ConfigMap, missing Secret, bad env variable
+
+CreateContainerError : Container runtime failed to create container.
+Reasons: invalid command, mount issues, permission problems
+
+OOMKilled: Container killed due to: Out of Memory(OOM)
+---------
+
+ContainerCreating: Pod preparing container.
+-----------------
+Activities Happening: image pulling, volume mounting , networking setup
+Long Delay Reasons : slow image pull, storage issue, CNI issue
+
+Terminating: Pod deletion in progress.
+-----------
+Stuck Reasons: finalizers , hanging process, volume detach issues
+kubectl delete pod pod-name --force --grace-period=0 [force delete]
+
+Evicted: Pod removed due to node pressure.
+-------
+Reasons: memory pressure, disk pressure
+
+
+TROUBLESHOOTING COMMANDS
+-----------------------
+kubectl describe pod pod-name
+kubectl logs pod-name
+kubectl logs pod-name --previous  [Previous crash logs]
+kubectl get events
+kubectl get pods -o wide
+
+“Kubernetes pod states represent the lifecycle of a pod such as Pending, Running, Succeeded, Failed, and Unknown. Common pod errors include CrashLoopBackOff, ImagePullBackOff, OOMKilled, and CreateContainerConfigError, which are typically diagnosed using describe, logs, and events.”
+
+
+
+Reconciliation Loop
+======================
+
+Kubernetes continuously checks: desired state vs actual state
+
+Desired State: replicas = 3 , Kubernetes ensures:always 3 pods running
+Self-Healing: If pod crashes: Kubernetes recreates pod automatically.
+
+Kubernetes is fundamentally a declarative, self-healing orchestration system that continuously reconciles actual cluster state with desired state using controllers and the API server.
+
+
+Immutable Infrastructure
+=========================
+
+Immutable Infrastructure means: servers are never modified after deployment
+Instead of changing existing servers:
+✅ create new infrastructure
+✅ replace old infrastructure
+
+Traditional vs Immutable
+
+| Traditional            | Immutable                 |
+| ---------------------- | ------------------------- |
+| Modify existing server | Replace server completely |
+| Manual changes         | Rebuild from image/code   |
+| Configuration drift    | Consistent environments   |
+
+Traditional Approach : SSH into server, Install packages manually, Change configs manually
+Problems: drift, inconsistency, hard rollback
+
+Immutable Approach: Build new image, Deploy new server/container, Delete old one
+
+| Technology | Immutable Example |
+| ---------- | ----------------- |
+| Docker     | New image build   |
+| Kubernetes | Replace pods      |
+| AWS AMI    | New VM image      |
+| Terraform  | Recreate infra    |
+
+Kubernetes is Highly Immutable : Deployment update:Old pod deleted and New pod created
+
+Benefits
+---------
+| Benefit        | Why Important           |
+| -------------- | ----------------------- |
+| Consistency    | Same everywhere         |
+| Easy rollback  | Deploy previous version |
+| Predictability | No hidden changes       |
+| Automation     | CI/CD friendly          |
+| Security       | Clean deployments       |
+
+“Immutable Infrastructure is a deployment approach where infrastructure components are never modified after creation. Instead, new versions are built and replaced entirely, ensuring consistency, reliability, and easier rollbacks.”
+
+
+IDEMPOTENCY
+===========
+
+Idempotency means: running same operation multiple times gives same result
+Example: kubectl apply -f deployment.yaml --> Run multiple times, result: same deployment state, No duplicate resources
+Example: useradd Reyaz, if you do second time, it says user already exists. This is Non-Idempotent
+ 
+Kubernetes is Immutable + Idempotent
+#################################################################################################################################################################
+Day=5
+#################################################################################################################################################################
