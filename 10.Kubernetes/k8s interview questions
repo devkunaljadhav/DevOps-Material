@@ -1,0 +1,14 @@
+Q1. What is Kubernetes?
+Explain Kubernetes and why we use it in DevOps.
+Q2. What is the difference between a Pod and a Container?
+Q3. What is the difference between a Deployment and a ReplicaSet?
+Q4. What are the main components of Kubernetes architecture?
+Explain the Control Plane and Worker Node components.
+Q5. What is the difference between ClusterIP, NodePort, and LoadBalancer services?
+Q6. What is a Namespace in Kubernetes? Why do we use it?
+Q7. What is the difference between ConfigMap and Secret?
+Q8. What happens when a Pod crashes?
+How does Kubernetes recover it?
+Q9. What is the difference between kubectl get pods, kubectl describe pod, and kubectl logs?
+Q10. How do you deploy an application in Kubernetes?
+Explain the steps and basic commands.
