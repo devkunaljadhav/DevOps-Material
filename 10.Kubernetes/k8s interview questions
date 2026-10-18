@@ -22,3 +22,13 @@ What are Labels and Selectors in Kubernetes?
 What is a ReplicaSet?
 What is a YAML file, and why is it used in Kubernetes?
 What is the difference between imperative and declarative commands?
+How do you troubleshoot a Pod stuck in Pending state?
+What will you do if a Pod enters CrashLoopBackOff?
+How do you scale a Deployment from 2 replicas to 5 replicas?
+How do you update an application image without downtime?
+How do you roll back a failed Deployment?
+How do you expose an application outside the Kubernetes cluster?
+How do you check why a Pod is failing?
+How do you pass environment variables to a container?
+What happens when a Worker Node goes down?
+How do you troubleshoot a Kubernetes Service that cannot reach its Pods?
