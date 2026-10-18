@@ -12,3 +12,13 @@ How does Kubernetes recover it?
 Q9. What is the difference between kubectl get pods, kubectl describe pod, and kubectl logs?
 Q10. How do you deploy an application in Kubernetes?
 Explain the steps and basic commands.
+What is the difference between Docker and Kubernetes?
+What is a Kubernetes cluster?
+What is the difference between a Master Node and a Worker Node?
+What is kubectl?
+What is a Pod lifecycle?
+What is the difference between a Pod and a Deployment?
+What are Labels and Selectors in Kubernetes?
+What is a ReplicaSet?
+What is a YAML file, and why is it used in Kubernetes?
+What is the difference between imperative and declarative commands?
