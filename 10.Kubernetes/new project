@@ -67,3 +67,22 @@ minikube service myapp
 - GitHub repository with a README
 
 My advice: Complete this basic project first. Once it works, add ConfigMaps, Secrets, probes, and monitoring.
+
+************************************************
+step 1 initial setup start
+
+minikube start
+
+kubectl create deployment myapp --image=nginx
+
+kubectl scale deployment myapp --replicas=3
+
+kubectl expose deployment myapp --type=NodePort --port=80
+
+kubectl get pods
+kubectl get deployments
+kubectl get services
+
+minikube service myapp
+
+*******************************************
