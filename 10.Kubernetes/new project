@@ -1,0 +1,88 @@
+start new project-19-10-26    
+step 1
+start R and d
+day 2 
+plain the project 
+
+# Basic Kubernetes Project Plan
+
+Project name: Nginx Web Application Deployment
+
+Goal: Deploy a web application on Kubernetes and access it through your browser.
+
+## 7-day plan
+
+| Day   | Topic         | Task                                        |
+| ----- | ------------- | ------------------------------------------- |
+| Day 1 | Setup         | Install Docker, Minikube and kubectl        |
+| Day 2 | Pods          | Create and manage a Pod                     |
+| Day 3 | Deployments   | Deploy Nginx with 3 replicas                |
+| Day 4 | Services      | Expose the application                      |
+| Day 5 | Scaling       | Scale replicas from 3 to 5                  |
+| Day 6 | Updates       | Perform a rolling update and rollback       |
+| Day 7 | Documentation | Upload YAML files and screenshots to GitHub |
+
+## Project architecture
+
+Browser
+
+Kubernetes Service
+
+Pod 1
+
+Nginx
+
+Pod 2
+
+Nginx
+
+Pod 3
+
+Nginx
+
+## Start with these commands
+
+```
+minikube start
+
+kubectl create deployment myapp --image=nginx
+
+kubectl scale deployment myapp --replicas=3
+
+kubectl expose deployment myapp --type=NodePort --port=80
+
+kubectl get pods
+kubectl get deployments
+kubectl get services
+
+minikube service myapp
+```
+
+## Final deliverables
+
+- Working Nginx application in Kubernetes
+- Deployment with 3 replicas
+- Service accessible through your browser
+- YAML files for Deployment and Service
+- GitHub repository with a README
+
+My advice: Complete this basic project first. Once it works, add ConfigMaps, Secrets, probes, and monitoring.
+
+************************************************
+step 1 initial setup start
+
+minikube start
+
+kubectl create deployment myapp --image=nginx
+
+kubectl scale deployment myapp --replicas=3
+
+kubectl expose deployment myapp --type=NodePort --port=80
+
+kubectl get pods
+kubectl get deployments
+kubectl get services
+
+minikube service myapp
+
+*******************************************

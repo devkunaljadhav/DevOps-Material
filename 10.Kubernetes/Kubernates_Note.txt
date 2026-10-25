@@ -1,6 +1,6 @@
-######################################################################################################################
+#######################################################################################################################
 DAY = 1
-######################################################################################################################
+#######################################################################################################################
 
 Docker Swarm and Kubernetes are both container orchestration platforms, but they have different strengths and use cases
 
@@ -314,3 +314,1714 @@ If we want to execute commands we need to use kubectl.
 #################################################################################################################
 DAY=2
 #################################################################################################################
+Minikube Setup
+--------------
+
+Requirement
+------------
+
+Launch Ubuntu 24 with t3.medium having min 20GB volume  [use ubuntu 24, t3.medium, 20GB mandatory, dont use ubuntu 26]
+
+Login to Ubuntu machine: username: ubuntu
+
+Install minikube and Kubectl
+ 
+vi minikube.sh
+
+sudo apt update -y
+sudo apt upgrade -y
+sudo apt install curl wget apt-transport-https -y
+sudo curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo mv minikube-linux-amd64 /usr/local/bin/minikube
+sudo chmod +x /usr/local/bin/minikube
+sudo minikube version
+sudo curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl&quot;
+sudo curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256&quot;
+sudo echo "$(cat kubectl.sha256) kubectl" | sha256sum --check
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+sudo minikube start --driver=docker --force
+
+   
+
+KUBECTL:
+--------
+kubectl is the CLI which is used to interact with a Kubernetes cluster.
+
+We can create, manage pods, services, deployments, and other resources.
+
+The configuration of kubectl is in the $HOME/.kube directory.
+
+-- minikube status
+
+-- kubectl get nodes
+
+-- kubectl get pods
+
+PODS :
+=======
+ 
+It is a smallest unit  of deployment in K8's.
+It is a group of containers.
+Pods are ephemeral (short living objects)
+Mostly we can use single container inside a pod but if we required, we can create multiple containers inside a same pod.  
+when we create a pod, containers inside pods can share the same network namespace, and can share the same storage volumes .
+While creating pod, we must specify the image, along with any necessary configuration and resource limits.
+K8's cannot communicate with containers, they can communicate with only pods.
+
+We can create this pod in two ways,
+
+1. Imperative(command)
+
+2. Declarative (Manifest file) - can be reuse - in real time we go with declarative
+
+By default, one pod has one container, if required we can create, if you create multiple containers in a single pod, all containers inside the pods will share the same volume
+
+
+1. Imperative(command)
+-----------------------
+
+Example:
+--------
+
+-- kubectl run pod1 --image nginx    [Creating  pod with name pod1 with image nginx]
+
+-- kubectl get pods/pod/po           [To get the pods , can use pods/po/pods also]
+
+-- kubectl get pod -o wide           [To get details about the pod]
+
+-- kubectl describe pod pod1         [To get more details about the pod]
+
+-- kubectl delete pod pod1           [To delete the pod]
+
+-- kubectl get events
+
+Example 2:
+---------
+
+-- kubectl run reyaz --image nginx  [This will create a pod name reyaz , with httpd image ]
+
+-  kubectl get pods
+
+-- kubectl logs reyaz  
+
+-- kubectl exec -it reyaz -- /bin/bash   [to connect to the pod inside]
+   cd /usr/share/nginx/html
+   cat i ndex.html
+
+-- kubectl delete pod reyaz   [This will delete the pod reyaz]
+
+
+The above approach we don't do, because no need to create PODS manually , so lets go for manifest declarative approach
+
+
+================================================
+
+2. Declarative (Manifest file)
+-----------------------------
+
+In manifest file we have these mandatory parameters
+
+---------------------
+apiVersion:
+kind:
+metadata:
+spec:
+---------------------
+
+What is apiVersion?
+-------------------
+
+apiVersion: Specifies the API version used for the Deployment object. apps/v1 is the stable API version for managing deployments. Depending on Kubernetes object we want to create, there is a corresponding code library we want to use. apiVersion refers to Code Library
+
+ Examples:
+---------
+
+POD : v1
+Service: v1
+NameSpace: v1
+Secrets: v1
+Replicaset: apps/v1
+Deployment: apps/v1
+jobs: batch/v1
+
+
+
+kubectl api-versions
+
+What is kind ?
+--------------
+
+Refers to Kubernetes object which we want to create.
+
+Example:
+--------
+kind: Pod
+kind: Deployment
+kind: Service
+kind: Ingress
+kind: job
+
+What is metadata?
+----------------
+
+Additional information about the Kubernetes object like name, labels etc
+
+name: The name of the Deployment/Pod/Service.
+labels: Key-value pairs used for organizing and selecting objects
+
+
+What is spec?
+------------
+
+Contains docker container related information like, image name, environment variables , port mapping etc
+
+How many number of pods (Replica)
+About container and that should run on which image
+On which port it should expose
+Labeling the entire deployment etc
+
+
+
+Sample manifest file
+--------------------
+
+apiVersion: v1
+kind: Pod  -- creating pod
+metadata:
+  name: pod1 -- name of the pod
+spec:  -- specifications
+  containers:
+    - image: nginx  -- image  name
+      name: cont1 -- container name
+
+-----------------
+
+vi pod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+spec:
+  containers:
+    - image: nginx
+      name: cont1
+
+-- kubectl create -f pod.yml    [ To create a pod using manifest]
+
+-- kubectl describe pod pod1    [ To describe pod ]
+
+-- kubectl delete pod pod1      [ To delete the pod ]
+
+DRAWBACK: once pod is deleted we can't retrieve the pod.
+
+If any pod deleted, it is deleted, no HA, for HA use ReplicaSET also called RS
+
+KUBECOLOR:
+
+wget https://github.com/hidetatz/kubecolor/releases/download/v0.0.25/kubecolor_0.0.25_Linux_x86_64.tar.gz
+tar -zxvf kubecolor_0.0.25_Linux_x86_64.tar.gz
+./kubecolor
+chmod +x kubecolor
+mv kubecolor /usr/local/bin/
+
+kubecolor get po
+
+-- kubectl create -f pod.yml  
+
+-- kubecolor get po
+
+======================================================================================================================================
+
+                                                             
+ 
+=======================================================================================================================================
+
+In last class, we created a pod with manifest file, but we deleted that pod.
+
+If any pod deleted, it is deleted, no HA, for HA use ReplicaSET also called RS
+
+
+=================
+REPLICASET
+=================
+
+This is used for managing multiple replicas of pod to perform activities like load balancing and autoscaling
+
+Setup minikube with ubuntu 24 as per installation process
+
+
+It will create replicas of same pod.
+
+we can use same application with multiple pods.
+
+Even if one pod is deleted automatically it will create another pod. It has self healing mechanism
+
+Depends on requirement we can scale the pods.
+
+We create rs --> rs wil create pods
+
+LABELS:
+-------
+
+As we are creating multiple pods with same application, all these pods have different names but how to group all of them as we have 1 application with multiple pods. So we can give a label to group them
+
+Individual pods are difficult to manage because they have different names
+so we can give a common label to group them and work with them together
+
+SELECTOR  
+--------
+
+It is used to select pods with same labels
+
+For replicaset use apiversion as apps/v1
+
+how to find the apiresources to write in manifest file
+
+kubectl api-resources
+
+vi replicaset.yml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: ib-rs    ---------- Name of the Replicaset
+  labels:
+    app: bank
+spec:     ------------- this spec is for PODS
+  replicas: 3   --------- how many number of pods
+  selector:
+    matchLabels:  -Ensures only pods with label app: bank are part of this Replicaset. if there is any pod with label bank, it will be a part of this replicaset
+      app: bank
+  template:            ------------ Ensures the pods get labeled as app: bank
+    metadata:
+      labels:
+        app: bank
+    spec:  ----------------- this spec is for containers
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+
+ 
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: ib-rs
+  labels:
+    app: ib
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ib
+  template:  
+    metadata:
+      labels:
+        app: ib
+    spec:  
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+
+
+
+
+
+Students: In your practise , create 3 more replica set mobilebanking, insurances and loans
+change label: app : internetbanking, app: mobilebanking, app: insurance , app: loans
+
+-- kubectl create -f replicaset.yml
+
+-- kubectl get replicaset
+
+       (or)
+
+-- kubectl get rs
+
+-- kubectl get rs -o wide  [This command will get more details about ReplciaSets]
+
+-- kubectl describe rs ib-rs  [This will describe about internetbanking-rs ]
+
+-- kubectl get pods
+
+-- kubectl get pods --show-labels   [This will list the pods with Labels]
+
+If you delete any pod, automatically new pod will be created, if you want to watch live, open another terminate and give.
+
+-- kubectl get pods --watch
+
+-- kubectl get pods
+
+-- kubectl delete pods pod-id      [First new pod create and the existing pod will be deleted]
+
+-- kubectl get pods --show-labels  [New pod got created, this is called ReplicaSet, if one pod delete , another pod will get created automatically]
+
+-- kubectl get pods -l app=bank  [This will list all the pods with label bank, l = label]
+
+-- kubectl delete pods -l app=bank  [To delete all the pods wit label bank]
+
+Note: Replicaset will take image details from manifest file -- replicaset.yml
+
+==============
+SCALE REPLICAS - Scale Out and Scale In
+==============
+
+Scale Out
+--------
+
+First open anotherwindows live
+
+-- kubectl get pods --watch
+
+
+-- kubectl get rs   [To list the replicasets]
+
+-- kubectl scale rs/ib-rs --replicas=10  [Now see pods creating live]
+
+Scale In
+--------
+
+-- kubectl scale rs/ib-rs --replicas=5  [Now see pods creating live]
+
+LIFO: LAST IN FIRST OUT.
+
+IF A POD IS CREATED LASTLY IT WILL DELETE FIRST WHEN SCALE IN
+
+Note: This Scale out and in is manual, later we learn how to automate
+
+Now, all pods are running with ib-image:latest image , but if i want to change the image to mobilebanking and update the POD, not possible in ReplicaSet
+
+-- kubectl describe pod -l app=bank | grep -i ID   [ALl pods are using ib-image:latest]
+
+Update the image in the replicaset, you cannot update in yml file, it will create a new replicaSet so there is a command to edit current replicaset
+
+-- kubectl edit rs/ib-rs    [change internetbankingrepo to insurance]
+
+-- kubectl describe pod -l app=bank | grep -i ID  [Still it shows internetbanking, image is not change , that's the problem with Replica SET, We cannot update the application]
+
+
+vi replicaset.yml  -- change to insurance
+
+-- kubectl apply -f replicaset.yml    [This will give error that ib-rs already exits. So need to create a new RS again]
+
+-- kubectl get pods --show-labels
+
+-- kubectl describe pod -l app=bank | grep -i ID   [you still see old image internetbanking ]
+
+But if you scale out, new pods will contains insurance repo
+
+-- kubectl scale rs/ib-rs --replicas=5
+-- kubectl describe pod -l app=bank | grep -i ID  [you see mobilebanking . only new image are insurance.
+                                                   This is the drawback of replicaset]
+
+Using ReplicaSet we cannot roll out the application
+
+Advantage
+-- self healing
+-- scaling
+
+Drawbacks
+ -- we cannot roll in and roll out, we cant update the applications using ReplicaSet, lets use DEPLOYMENT
+
+rs ---> pods
+
+kubectl delete rs ib-rs
+~
+
+ReplicationController:
+=======================
+
+Same as ReplicaSet. It also used for handling multiple replicas of specific pod. But it doesn't contain selector and its child field matchField. matchField where it will search for pods based on a specific label name and adds them to Cluster
+                                                                                             
+
+Kind : ReplicationController
+ 
+This below code doesn't contain matchLabels Field
+******************************************
+
+apiVersion: apps/v1
+kind: ReplicationController
+metadata:
+  name: ib-rs
+  labels:
+    app: bank
+spec:
+  replicas: 3
+  template:  
+    metadata:
+      labels:
+        app: bank
+    spec:  
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+Replication Controller
+---------------------
+
+The Replication Controller is the original form of replication in Kubernetes
+
+The Replication Controller uses equality-based selectors to manage the pods.
+
+The rolling-update command works with Replication Controllers
+
+Replica Controller is deprecated and replaced by ReplicaSets.
+
+Replica Set  
+------------
+
+ReplicaSets are a higher-level API that gives the ability to easily run multiple instances of a given pod
+
+ReplicaSets Controller uses set-based selectors to manage the pods.
+
+The rolling-update command won’t work with ReplicaSets.
+
+Deployments are recommended over ReplicaSets.
+#################################################################################################################################################################
+Day=3
+#################################################################################################################################################################
+=====================
+ DEPLOYMENT
+=====================
+
+Kubernetes Deployment
+---------------------
+Kubernetes deployment is a high-level resource object by which you can manage the deployment and scaling of the applications while maintaining the desired state of the application. You can scale the containers with the help of Kubernetes deployment up and down depending on the incoming traffic. If you have performed any rolling updates with the help of deployment and after some time if you find any bugs in it then you can perform rollback also. Kubernetes deployments are deployed with the help of CLI like Kubectl it can be installed on any platform.
+
+Before, we used ReplicaSet, ReplicaSet will create pods
+
+Now, Deployment can create ReplicaSet and ReplicaSet will create PODS
+
+deployment create rs---> rs will create Pods
+
+We can update the application.
+ 
+
+
+ 
+
+First delete the existing ReplicaSet
+ 
+-- kubectl delete rs ib-rs
+
+-- kubectl get rs
+
+-- kubectl get pods
+
+
+copy replicaset.yml to deployment.yml
+
+cp replicaset.yml deployment.yml
+
+vi yml --> Just change  "kind: Deployment" and "name: ib-deployment"
+-----------------------------------------------------------------
+
+and image to internetbanking for to understand better
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ib-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+-- kubectl create -f deployment.yml
+
+-- kubectl get deploy   or kubectl get deployments
+
+-- kubectl get deploy -o wide
+
+-- kubectl get rs  -----> Deploy will create ReplicaSet
+
+-- kubectl describe deploy ib-deployment
+
+-- kubectl get pods
+
+[FYI: delete the deployment: kubectl delete deploy deploymentname]
+
+Now lets scale out and Scale IN
+
+Scale Out
+---------
+
+-- kubectl scale deploy/ib-deployment --replicas=10
+
+-- kubectl get pods
+
+
+Scale In
+--------
+
+-- kubectl scale deploy/ib-deployment --replicas=5
+
+-- kubectl get pods
+
+What ever Replica set is doing Deployment is also doing the same thing
+
+if you delete any pod, it will create immediately automatically
+
+-- kubectl get pods
+
+-- kubectl delete pod pod-id
+ 
+-- kubectl describe pod -l app=bank | grep -i ID
+
+(or)
+
+-- kubectl describe pods | grep -i image   [It shows all internetbankingrepo image]
+
+***************** Now what Deployment do additional thing is to change the application ***************
+
+First watch pods in another terminal
+
+-- kubectl get po --watch
+
+-- kubectl edit deploy/ib-deployment   [change to mobilebanking]
+
+watch pods in another terminal , first it will create a new pods and then terminate old ones
+
+-- kubectl describe pods | grep -i image [you can see now mobilebanking image]
+
+
+kubectl get events --sort-by=.metadata.creationTimestamp
+
+
+============
+RollOut Few commands
+============
+
+-- kubectl rollout history deploy/ib-deployment
+
+-- kubectl rollout undo deploy/ib-deployment   [It will go back to previous application / image ]
+
+-- kubectl get pods  [Pods are terminating and creating new pods with new image, this was not possible in ReplicaSet]
+
+-- kubectl describe pods | grep -i image
+
+-- kubectl rollout pause deploy/ib-deployment  --- it is like lock, cannot undo, cannot rollout to previous
+
+-- kubectl rollout undo deploy/ib-deployment  -- not possible
+
+-- kubectl rollout resume deploy/ib-deployment
+
+-- kubectl rollout undo deploy/ib-deployment -- now possible
+
+-- kubectl rollout status deploy/ib-deployment
+
+ 
+Deployment has 2 Strategies
+--------------------------
+Rolling update: This is Default, When you update the application, Rolling update will delete one pod and create . One by one
+
+Recreate: Delete all pods and create again- Downtime. Not recommended
+
+
+Blue-Green Deployment: 🟦 Blue = old version, 🟩 Green = new version, Switch traffic only when the new version is fully ready
+Canary Deployment:  Roll out new version to a small set of users, then gradually increase.
+
+Example: see strategy: Recreate
+    -------
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ib-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 3
+  strategy:
+     type: Recreate
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+
+====================================================
+
+If you want port to expose , use below code
+
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+        ports:
+        - containerPort: 8080   # Port inside the container
+          hostPort: 8080        # Port on the host machine
+
+
+🔹 Explanation of Changes
+---------------------------
+✅ containerPort: 8080 → The app runs inside the container on port 8080.
+✅ hostPort: 8080 → The container maps its 8080 port to the same port on the host machine.
+
+🔹 Important Notes on hostPort
+----------------------------------
+hostPort directly binds the container port to the host.
+It works only on worker nodes where the pod runs.
+If multiple pods run on the same node, you cannot use the same hostPort for all of them.
+Recommended alternative: Instead of hostPort, use a Kubernetes Service (NodePort or LoadBalancer) to expose the Deployment.
+------------------------
+
+By default, a ReplicaSet (RS) only ensures that a specific number of Pods are running. However, it does not provide network access to those Pods externally.
+
+✅ To access your application from the internet, you need a Kubernetes Service.
+
+
+=======================================================================================================================================
+
+=======================================
+🚀 Kubernetes Manifest: 1 Pod with 2 Containers
+===============================================
+
+In Kubernetes, a Pod can run multiple containers that share the same network and storage. Here’s how to create a single Pod with two containers inside it.
+
+vi pod-two-containers.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: two-container-pod
+  labels:
+    app: multi-container
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+    ports:
+    - containerPort: 80
+  - name: busybox-container
+    image: busybox
+    command: ["sh", "-c", "while true; do echo 'Hello from BusyBox'; sleep 10; done"]
+
+
+
+-c: Tells sh to execute the following string command
+
+-- kubectl apply -f pod-two-containers.yaml
+
+-- kubectl get pods    [we get single pod but 2/2 meaning, 2 containers]
+
+-- kubectl logs two-container-pod -c busybox-container
+ 
+-- kubectl logs two-container-pod -c nginx-container
+
+-- kubectl exec -it two-container-pod -c nginx-container -- sh       [-c: container]
+
+   cd /usr/share/nginx/html
+
+-- kubectl exec -it two-container-pod -c busybox-container -- sh
+   
+   ls
+
+
+
+Kubernetes JOBS
+================
+
+A Kubernetes Job is used to run a task once or for a limited number of times.
+A Kubernetes Job is a controller used for running one-time or batch workloads that must complete successfully.”
+
+Unlike a Deployment:
+
+Deployment → runs applications continuously
+Job → runs a task and exits after completion
+
+Examples:
+
+Database backup
+Sending reports
+Batch processing
+Data migration
+Script execution
+CI/CD task
+
+User → Creates Job YAML
+        ↓
+Kubernetes API Server
+        ↓
+Job Controller
+        ↓
+Creates Pod
+        ↓
+Pod Executes Task
+        ↓
+Task Completes
+        ↓
+Pod Stops
+
+TYPES OF KUBERNETES JOBS
+-------------------------
+
+| Type             | Purpose                           |
+| ---------------- | --------------------------------- |
+| Non-Parallel Job | One task                          |
+| Parallel Job     | Multiple tasks together           |
+| Work Queue Job   | Workers consume tasks dynamically |
+| CronJob          | Scheduled jobs                    |
+
+
+1. NON-PARALLEL JOB
+---------------------
+1 pod
+1 task
+1 completion
+
+Example: Take DB backup once
+
+vi singlejob.yml
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: single-job
+
+spec:
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox
+        command: ["sh", "-c", "echo Hello Students && sleep 5"]
+
+      restartPolicy: Never
+
+
+
+kubectl create -f singlejob.yml
+
+
+kubectl get jobs
+
+kubectl get pods
+
+kubectl logs <pod-name>
+
+Job runs --> Task completes --> Pod exits successfully
+
+
+restartPolicy: “What should happen if container stops or fails?” [Always, OnFailure, Never]
+-------------------------------
+Always: Always restarts the container if it exits or crashes.Kubernetes restarts it again.
+        Use Case: Default for Deployments & ReplicaSets. Because apps should run forever
+
+Container starts
+↓
+Container exits
+↓
+Kubernetes restarts it
+↓
+again and again
+
+----------------------------------                                      
+OnFailure: Restarts the container only if it exits with an error (non-zero exit code). Do NOT restart if task completed successfully
+           Use case: Jobs & CronJobs
+
+Task complete
+↓
+No restart
+
+or
+
+Container crashes
+↓
+Kubernetes retries
+
+Example: Database backup job. If backup fails: retry automatically
+---------------------------
+                                                                     
+Never: Never restarts the container, even if it fails or stop. Use Case: Testing/debugging Jobs/ Jobs & CronJobs (One-time execution)
+       
+
+| Value     | Meaning                  |
+| --------- | ------------------------ |
+| Always    | Restart container always |
+| OnFailure | Restart only if failed   |
+| Never     | Never restart            |
+
+
+Note: We can add completions also in Non-Parallel Jobs. Completions meaning, how many number of jobs should be completed
+It will run 5 times jobs to complete. But one at a time. meaning one by one
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: single-job
+
+spec:
+  completions: 5
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox
+        command: ["sh", "-c", "echo Hello Students && sleep 5"]
+
+      restartPolicy: Never
+
+
+NAME               READY   STATUS      RESTARTS   AGE
+single-job-8zrwn   0/1     Completed   0          50s
+single-job-9cw4p   0/1     Completed   0          41s
+single-job-b24kj   0/1     Completed   0          23s
+single-job-b4dm2   0/1     Completed   0          32s
+single-job-h7887   0/1     Completed   0          14s
+
+
+
+
+2. PARALLEL JOB
+---------------
+Run multiple pods simultaneously.
+
+Example: Resize 1000 images faster, instead of 1 worker , use multiple workers
+
+| Field       | Meaning                       |
+| ----------- | ----------------------------- |
+| completions | total successful tasks needed |
+| parallelism | how many run together         |
+
+
+vi parallel.yml
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: parallel-job
+ 
+spec:
+  completions: 5
+  parallelism: 2
+
+  template:
+    spec:
+      containers:
+      - name: worker
+        image: busybox
+        command: ["sh", "-c", "echo Processing Task && sleep 10"]
+
+      restartPolicy: Never
+
+
+Need 5 successful pods(completions), Run only 2 pods(parallelism) simultaneously
+
+kubectl create -f parallel.yml
+
+kubectl get pods
+
+kubectl logs <pod-name>
+
+
+
+Pod1 + Pod2 running
+        ↓
+Complete
+        ↓
+Pod3 + Pod4 running
+        ↓
+Complete
+        ↓
+Pod5 running
+        ↓
+Job finished
+
+3. WORK QUEUE JOB
+-----------------
+
+Workers pull tasks dynamically from queue.
+
+Examples:
+| Company | Queue Processing     |
+| ------- | -------------------- |
+| Netflix | Video encoding       |
+| Amazon  | Order processing     |
+| Uber    | Ride events          |
+| YouTube | Thumbnail generation |
+
+
+Queue
+ ↓
+Worker Pods
+ ↓
+Tasks processed
+
+Kubernetes:
+❌ does NOT provide queue
+
+Usually queue is:
+
+RabbitMQ
+Kafka
+Redis
+AWS SQS
+
+Kubernetes Job only runs worker pods.
+
+
+vi queue.yml
+
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: queue-job
+
+spec:
+  parallelism: 3
+
+  template:
+    spec:
+      containers:
+      - name: worker
+        image: busybox
+        command:
+        - sh
+        - -c
+        - |
+          echo "Worker processing task"
+          sleep 20
+
+      restartPolicy: Never
+
+
+3 worker pods start
+Each worker processes tasks . Note: -c command
+
+kubectl create -f queue.yml
+
+kubectl get pods
+
+kubectl logs <pod-name>
+
+
+Will Kubernetes Start New Pods Again in Queue job? NO [because No completions specified and No queue system exists]
+-----------------
+Kubernetes Job itself:
+❌ does NOT continuously watch queue, its run only pods
+we can add completion if required as completions: 10[3 pods start as parallelism 3. continues until 10 completions]
+
+Real example
+-----------    
+RabbitMQ / Kafka / Redis Queue
+          ↓
+Worker Pods
+          ↓
+Workers keep polling queue
+
+Work Queue Job
+
+Kubernetes only starts workers.
+-----------------------------
+Worker application handles(The application code controls this.):
+
+Queue polling
+Task consumption
+Exit logic
+
+“In Kubernetes work queue patterns, Kubernetes only manages worker pod creation. Continuous task consumption is handled by the application logic polling external queues like RabbitMQ or Kafka. New pods are created only if completions are pending or pods fail.”
+
+
+ Kubernetes CronJob Example
+===============================
+
+A Kubernetes CronJob is used to schedule jobs to run at specific times, just like a Linux cron job. It is useful for tasks such as backups, periodic data processing, or sending scheduled reports.
+
+
+This CronJob prints "Hello from Kubernetes!" every minute.
+
+
+vi cron.yml
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name:  hello-cronjob
+spec:
+  schedule: "*/1 * * * *"  # Runs every minute
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello-container
+            image: busybox
+            command: ["sh", "-c", "echo Hello from Kubernetes!"]
+          restartPolicy: Never  # Ensure job runs only once per schedule
+
+
+-- kubectl apply -f cron.yaml
+
+-- kubectl get cronjobs
+
+-- kubectl describe cronjob hello-cronjob
+
+
+🔹 View Logs of Last Run
+---------------------------
+
+-- kubectl get pods  # Get the latest pod name
+
+-- kubectl logs <POD_NAME>
+
+-- kubectl get cronjob
+
+-- kubectl delete cronjob hello-cronjob
+#################################################################################################################################################################
+Day=4
+#################################################################################################################################################################
+minikube is on single node, if that single nodes down all my pods are gone
+
+Dockerswarm we launched manually, worker nodes are manually created but here now we can automate servers
+
+how to work on Multi-Node cluster
+
+
+
+==============================
+   KOPS
+==============================
+
+Kops (Kubernetes Operations) is a command-line tool that helps you create, manage, upgrade, and destroy Kubernetes clusters on cloud providers like AWS, GCP, and more.
+
+It's often referred to as the "kubectl" for clusters, and it is a popular choice for creating production-grade Kubernetes clusters on AWS.
+
+Advantages
+-------------
+Automate infra creation in AWS and GCE Kubernetes cluster
+
+Deploys HA K8S master
+
+Supports rolling updates
+
+supports homogenous and heterogenous clusters.
+
+save time and work.
+
+Alternatives:  EKS, MINIKUBE, KUBEADM, RANCHER, TERRAFORM
+------------
+
+ KOPS will just create Production level Cluster, its a 3rd party tool
+
+=======================================================
+                          KOPS Setup using attached script
+========================================================
+
+
+Note: just try to delete now worker node or master node, ASG will create it immediately
+
+-- kops get cluster
+
+-- kubectl get nodes/no
+
+-- kubectl get nodes -o wide
+
+-- Normally, kubectl uses your local $HOME/.kube/config file for authentication
+   cd /root/.kube/
+   cat config   [This contains certificates and keys for user to authenticate cluster]
+
+
+===========================
+Few Cluster Admin Activities
+==========================
+
+ Currently we have now only 1 master nodes and 2 worker nodes
+
+KOPS commands are used for cluster activities.
+KUBECTL commands are used for resource activities.
+
+annotations
+----------
+kops get ig
+
+ig =  instance group
+
+WorkerNodes = nodes-ap-south-1a
+WorkerNodes = nodes-ap-south-1b
+
+Control Plane: control-plane-ap-south-1a
+
+Scale Out Worker Nodes
+----------------------
+
+-- kops edit ig --name=reyaz.k8s.local nodes-ap-south-1a
+           --> max size = 2, min size = 2  [It shows 1 as in 1a we have only 1 worker node, change to 2]
+
+-- kops update cluster --name reyaz.k8s.local --yes --admin
+
+-- kops rolling-update cluster --yes
+
+See in AWS Console , 2 additional worker nodes got created
+
+-- kubectl get nodes   [takes time to show]
+
+Scale out Master Nodes
+----------------------
+“Multiple Kubernetes control planes provide High Availability by eliminating single points of failure. If one control plane node fails, other control planes continue managing the cluster without downtime.”
+
+Usually API Server sits behind:Load Balancer
+
+kubectl
+   ↓
+Load Balancer
+   ↓
+CP1  CP2  CP3
+
+Requests automatically go to healthy master.
+
+-- kops edit ig --name=reyaz.k8s.local control-plane-ap-south-1a
+           --> max size = 2, min size = 2 [It shows 1 as we have only 1 CP, change to 2 for HA]
+
+-- kops update cluster --name reyaz.k8s.local --yes --admin
+
+-- kops rolling-update cluster --yes
+
+See in AWS Console , 1 additional Master nodes got created
+
+-- kubectl get nodes  [takes time to show]
+
+*************************************************************************
+IF ERROR
+=======
+🔹 Step 3: If Kubelet is Installed but Not Found in Systemd
+If kubelet is installed but still not found in systemd, try reloading systemd:
+
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+If the issue persists, manually add the systemd service file:
+
+sudo nano /etc/systemd/system/kubelet.service
+
+[Service]
+ExecStart=/usr/bin/kubelet
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+[Install]
+WantedBy=multi-user.target
+Then reload and start:
+
+sudo systemctl daemon-reload
+sudo systemctl enable kubelet
+sudo systemctl restart kubelet
+
+🔹 Step 4: Check Logs for Errors
+If kubelet is still failing, check logs:
+
+sudo journalctl -u kubelet -f
+
+
+*******************************************************
+
+
+
+vi deployment.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ib-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/ib-image:latest
+
+-- kubectl create -f deployment.yml
+
+- - kubectl get pods
+
+-- Kubectl get pods -o wide
+
+-- kubectl get nodes -o wide
+
+Manager node will not host pods himself, K8S will create pods only in worker nodes
+
+-- kubectl get pods -o wide   [see the nodes, pods spread across nodes equally]
+
+Example: if you want 5 pods , edit yml file and update replicas to 5
+
+-- kubectl apply -f deployment.yml
+
+-- kubectl get no -o wide
+
+
+
+Example: Lets do a new deployment again
+--------------------------------------
+
+Before that clean up
+
+-- kubectl get deployments
+
+-- kubectl delete deploy ib-deployment
+
+-- kubectl get pods
+
+vi deploynew.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mb-deployment
+  labels:
+    app: bank
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: bank
+  template:
+    metadata:
+      labels:
+        app: bank
+    spec:
+      containers:
+      - name: cont1
+        image: trainerreyaz/mb-image:latest
+
+-- kubectl create -f deploynew.yml
+
+-- kubectl get po -o wide   [Now all pods are spread across 4 worker nodes]
+
+If you want to scale out pods
+-------------------------
+
+-- kubectl scale deploy/mb-deployment --replicas=10
+
+-- kubectl get pods -o wide
+
+If you want to scale in pods
+-------------------------
+
+-- kubectl scale deploy/mb-deployment --replicas=4
+
+-- kubectl get pods -o wide
+
+kops delete cluster --name reyaz.k8s.local --yes
+
+
+
+kubectl
+ ↓
+API Server
+ ↓
+etcd stores desired state
+ ↓
+Scheduler selects node
+ ↓
+Kubelet creates pod
+ ↓
+Container runtime starts containers
+
+
+============================================================================================================================================
+ 
+===============
+NAMESPACES
+===============
+
+Namespaces are used to Logically separate resources inside a Kubernetes cluster. Like Folders inside Kubernetes
+
+Generally we cannot create multiple Cluster for each team(expensive), instead we create a NameSpaces in one Cluster for each team
+
+Namespaces will not talk to each other, its an isolated space in one Cluster
+
+Each namespaces can see their own pods
+
+
+
+TYPES:
+=======
+
+| Namespace       | Purpose                        |
+| --------------- | ------------------------------ |
+| default         | User workloads                 |
+| kube-system     | Kubernetes internal components |
+| kube-public     | Public readable resources, such as cluster info    |
+| kube-node-lease | Node heartbeat info, monitoring nodes|
+
+Pods can still communicate across namespaces.
+ 
+Using: servicename.namespace.svc.cluster.local
+
+Example:
+
+mysql.dev.svc.cluster.local
+
+Namespaces in Kubernetes provide logical isolation of resources within the same cluster. They help organize workloads, enforce RBAC, quotas, and separate environments like dev, test, and production
+
+
+
+Note: Every component of kubernetes cluster is going to create in the form of POD, All these PODS are stored in Kube-System Namespace
+
+-- kubectl get namespace/ns
+
+-- kubectl get pods
+
+-- kubectl describe pod   [ By default pods are created in default namespace]
+
+
+-- kubectl get pods -A  [This will list all pods from all namespaces]
+
+-- kubectl get pods --all-namespaces  [This can also be used to get all pods from all namespaces]
+
+-- kubectl get pods -n default [This will list pods wchich is in default namespace]
+
+-- kubectl get pods -n kube-node-release  -- no pods here
+
+-- kubectl get pods -n kube-public  -- no pods here
+
+-- kubectl get pods -n kube-system  [all kubeproxy, apiserver, controller, schedular pods are here]
+
+
+Lets create a pods in namespaces
+--------------------------------
+
+-- kubectl get ns
+
+-- kubectl create ns dev
+
+-- kubectl get ns
+
+Currently I am in default namespace, how to check
+
+-- kubectl config view   [ output doesn't show namespace,  if you don't see any namespace, this is default]
+
+-- kubectl config set-context --current --namespace=dev  [This is use to switch to move from another namespace]
+
+-- kubectl config view  [ Now this output show dev namespace ]
+
+-- kubectl get pods  [Now you are in dev namespace, now you cannot see any pods of other namespace]
+
+== create a new pods in this namespace
+
+-- kubectl run dev1 --image nginx
+-- kubectl run dev2 --image nginx
+-- kubectl run dev3 --image nginx
+
+-- kubectl get pods
+
+=== lets create few pods in PROD namespace
+------------------------------------------
+
+kubectl get ns
+
+kubectl create ns prod
+
+kubectl get ns
+
+kubectl config view  -- see the output, we are in dev
+
+kubectl config set-context --current --namespace=prod   --- now change the namespace to prod
+
+kubectl config view
+
+kubectl get po
+
+you are in prod namespace , but if you want to see from another namespace
+
+kubectl run prod1 --image nginx
+kubectl run prod2 --image nginx
+kubectl run prod3 --image nginx
+
+kubectl get po
+
+kubectl get po -n default
+kubectl get po -n dev
+kubectl get po -n prod
+
+kubectl delete pod dev1 -n dev   [Deleting the  pod dev2 in dev namespace]
+
+kubectl delete pod prod1 -n prod   [Deleting the  pod prod1 in prod namespace]
+
+kubectl delete pod --all : [To delete all pods in the namespace]
+
+If require: kubectl delete namespace <namespace-name>
+
+In this case, anyone can access/delete/create pods in any namespace. Which is not good. for this we need restrict users to access namespaces using RBAC.
+
+
+
+Image Pull Policy
+-----------------
+
+“ImagePullPolicy controls whether kubelet downloads a fresh image or uses existing local image.”
+
+
+ImagePullPolicy defines when Kubernetes pulls a container image from the registry.
+
+Image Pull Policy in Kubernetes defines when Kubernetes should pull (download) a container image from a container registry.
+
+| Policy           | Meaning                                       |
+| ---------------- | --------------------------------------------- |
+| **Always**       | Always pull image before starting container   |
+| **IfNotPresent** | Pull only if image not available locally. Most common in Production |
+| **Never**        | Never pull; image must exist locally          |
+
+
+Advantage
+
+✅ Faster pod startup
+✅ Less network usage
+
+Default Behavior (Very Important)
+--------------------------------
+
+If imagePullPolicy is not specified:
+
+
+| Image Tag     | Default Policy |
+| ------------- | -------------- |
+| `:latest`     | `Always`       |
+| Any other tag | `IfNotPresent` |
+ 
+
+Example:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-always
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.25
+    imagePullPolicy: Always or IfNotPresent or Never
+
+| Scenario                       | Result                 |
+| ------------------------------ | ---------------------- |
+| Policy = Always                | Pulls image every time |
+| Policy = IfNotPresent          | Uses cached image      |
+| Policy = Never + image missing | Pod fails              |
+
+Which policy used with latest tag?
+------------------------------------
+✅ Always
+
+Why latest tag not recommended in production?
+---------------------------------------------
+Because:
+❌ unpredictable deployments
+❌ version inconsistency
+
+What happens if imagePullPolicy=Never and image missing?
+----------------------------------------------------------
+Pod fails with:
+
+ErrImageNeverPull
+
+Which component pulls images?
+---------------------------
+✅ kubelet
+
+using:
+
+containerd
+CRI-O
+Docker runtime
+
+What is ErrImagePull?
+---------------------
+Kubernetes unable to pull image.
+Initial failure
+
+Reasons:
+
+wrong image name
+registry issue
+authentication issue
+
+What is ImagePullBackOff?
+-------------------------
+Kubernetes repeatedly retrying image pull.
+Retry backoff state
+
+=========================================
+🚀 POD PHASES (Official States)
+=========================================
+
+| Pod State | Meaning                           |
+| --------- | --------------------------------- |
+| Pending   | Pod accepted but not running yet  |
+| Running   | Pod running successfully          |
+| Succeeded | Container completed successfully  |
+| Failed    | Container exited with failure     |
+| Unknown   | Kubernetes cannot determine state |
+
+=========================================
+🚀 COMMON POD ERRORS
+=========================================
+
+CrashLoopBackOff : Container repeatedly crashing and restarting.
+----------------
+Reasons: app crash, bad config, DB unavailable
+
+Crash
+ ↓
+Restart
+ ↓
+Crash
+ ↓
+Backoff delay
+
+Check:
+-----
+kubectl logs pod-name
+kubectl describe pod pod-name
+
+ImagePullBackOff: Kubernetes retrying image pull after failure.
+----------------
+Reasons: wrong image name, private registry auth failure, image not found
+
+ErrImagePull: Initial image pull failed.
+------------
+
+| ErrImagePull  | ImagePullBackOff |
+| ------------- | ---------------- |
+| First failure | Retry state      |
+
+CreateContainerConfigError : Invalid container configuration.
+-----------------------
+Reasons: missing ConfigMap, missing Secret, bad env variable
+
+CreateContainerError : Container runtime failed to create container.
+Reasons: invalid command, mount issues, permission problems
+
+OOMKilled: Container killed due to: Out of Memory(OOM)
+---------
+
+ContainerCreating: Pod preparing container.
+-----------------
+Activities Happening: image pulling, volume mounting , networking setup
+Long Delay Reasons : slow image pull, storage issue, CNI issue
+
+Terminating: Pod deletion in progress.
+-----------
+Stuck Reasons: finalizers , hanging process, volume detach issues
+kubectl delete pod pod-name --force --grace-period=0 [force delete]
+
+Evicted: Pod removed due to node pressure.
+-------
+Reasons: memory pressure, disk pressure
+
+
+TROUBLESHOOTING COMMANDS
+-----------------------
+kubectl describe pod pod-name
+kubectl logs pod-name
+kubectl logs pod-name --previous  [Previous crash logs]
+kubectl get events
+kubectl get pods -o wide
+
+“Kubernetes pod states represent the lifecycle of a pod such as Pending, Running, Succeeded, Failed, and Unknown. Common pod errors include CrashLoopBackOff, ImagePullBackOff, OOMKilled, and CreateContainerConfigError, which are typically diagnosed using describe, logs, and events.”
+
+
+
+Reconciliation Loop
+======================
+
+Kubernetes continuously checks: desired state vs actual state
+
+Desired State: replicas = 3 , Kubernetes ensures:always 3 pods running
+Self-Healing: If pod crashes: Kubernetes recreates pod automatically.
+
+Kubernetes is fundamentally a declarative, self-healing orchestration system that continuously reconciles actual cluster state with desired state using controllers and the API server.
+
+
+Immutable Infrastructure
+=========================
+
+Immutable Infrastructure means: servers are never modified after deployment
+Instead of changing existing servers:
+✅ create new infrastructure
+✅ replace old infrastructure
+
+Traditional vs Immutable
+
+| Traditional            | Immutable                 |
+| ---------------------- | ------------------------- |
+| Modify existing server | Replace server completely |
+| Manual changes         | Rebuild from image/code   |
+| Configuration drift    | Consistent environments   |
+
+Traditional Approach : SSH into server, Install packages manually, Change configs manually
+Problems: drift, inconsistency, hard rollback
+
+Immutable Approach: Build new image, Deploy new server/container, Delete old one
+
+| Technology | Immutable Example |
+| ---------- | ----------------- |
+| Docker     | New image build   |
+| Kubernetes | Replace pods      |
+| AWS AMI    | New VM image      |
+| Terraform  | Recreate infra    |
+
+Kubernetes is Highly Immutable : Deployment update:Old pod deleted and New pod created
+
+Benefits
+---------
+| Benefit        | Why Important           |
+| -------------- | ----------------------- |
+| Consistency    | Same everywhere         |
+| Easy rollback  | Deploy previous version |
+| Predictability | No hidden changes       |
+| Automation     | CI/CD friendly          |
+| Security       | Clean deployments       |
+
+“Immutable Infrastructure is a deployment approach where infrastructure components are never modified after creation. Instead, new versions are built and replaced entirely, ensuring consistency, reliability, and easier rollbacks.”
+
+
+IDEMPOTENCY
+===========
+
+Idempotency means: running same operation multiple times gives same result
+Example: kubectl apply -f deployment.yaml --> Run multiple times, result: same deployment state, No duplicate resources
+Example: useradd Reyaz, if you do second time, it says user already exists. This is Non-Idempotent
+ 
+Kubernetes is Immutable + Idempotent
+#################################################################################################################################################################
+Day=5
+#################################################################################################################################################################

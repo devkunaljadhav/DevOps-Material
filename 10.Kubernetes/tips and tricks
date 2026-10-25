@@ -1,0 +1,15 @@
+1. Pod: The smallest deployable unit in Kubernetes. It runs one or more containers.
+
+2. Deployment: Manages Pods and maintains the desired number of replicas. It supports rolling updates and rollbacks.
+
+3. Service: Exposes an application running in Pods and provides a stable network endpoint for accessing it.
+
+4. Scaling: Kubernetes can increase or decrease the number of Pod replicas according to application requirements. HPA can automate scaling based on configured metrics.
+
+5. Self-Healing: Kubernetes can restart failed containers and replace failed Pods to maintain the desired state.
+
+6. ConfigMap: Stores non-sensitive configuration data separately from application code, such as environment settings.
+
+7. Secret: Stores sensitive information such as passwords, tokens, and API keys. Configure access controls carefully because Secrets are not automatically encrypted in every setup.
+
+8. Namespace: Divides a Kubernetes cluster into logical environments, such as development, testing, and production.

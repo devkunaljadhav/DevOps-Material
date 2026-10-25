@@ -1,0 +1,5 @@
+1	kubectl get nodes	= View all cluster nodes
+2	kubectl get pods	= List pods in the current namespace
+3	kubectl get deployments =	List deployments
+4	kubectl get services = List Kubernetes services
+5	kubectl describe pod <pod-name> =	View detailed information about a pod
