@@ -1,4 +1,3 @@
-cat <<'EOF' > install-docker.sh
 #!/bin/bash
 set -e
 
