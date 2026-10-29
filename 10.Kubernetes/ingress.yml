@@ -1,6 +1,7 @@
 Note: In below yml file change ACM ARN and host to some domain name
-
 vi ingress.yml
+
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -8,15 +9,18 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: instance
-    alb.ingress.kubernetes.io/subnet-auto-discovery: kops-util
 
-    # Redirect all HTTP to HTTPS
+    # Explicitly specify two verified public subnets
+    alb.ingress.kubernetes.io/subnets: subnet-0701152c1eb4c10ec,subnet-0e28a957b32bcdf9f
+
+    # HTTP and HTTPS listeners
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
 
-    # ACM Certificate ARN for SSL
+    # ACM certificate in ap-south-1
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:298713973935:certificate/fc540759-fc94-463b-a77c-d8c5a9e5dae1
-    # Optional: Health check settings for ALB
+
+    # Health check
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
 spec:
@@ -32,3 +36,4 @@ spec:
                 name: insurance-service
                 port:
                   number: 80
+
