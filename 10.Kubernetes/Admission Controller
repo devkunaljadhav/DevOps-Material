@@ -1,0 +1,848 @@
+When you send a request to the Kubernetes API (like creating a Pod, Deployment, or Service), that request passes through several stages before it’s accepted and written to etcd.
+
+In Kubernetes, an Admission Controller is a component that intercepts API requests after authentication and authorization but before the object is stored in etcd.
+
+kubectl apply/Create ---> API Server(Authentication and Authorization) ---> Admission Controllers ---> etcd
+
+kubectl
+   ↓
+API Server
+   ↓
+Authentication
+   ↓
+Authorization
+   ↓
+Admission Controllers
+   ↓
+etcd
+
+
+
+Authentication = Who are you?
+Authorization = Are you allowed to do this?
+Admission Controller = SHould this object be modified or rejected?
+
+The role of Admission Controllers
+----------------------------------
+They act as gatekeepers for the Kubernetes API.
+“Admission Controllers act like security and policy checkpoints inside the Kubernetes API Server.”
+
+They can:
+
+Validate requests (check if something is allowed)
+-----------------
+Mutate requests (automatically add/change fields)
+---------------
+Reject requests (if they break rules)
+---------------
+
+Types of Admission Controllers
+------------------------------
+Kubernetes has two types:  Built-in Admission Controllers and Dynamic Admission Controllers (Webhooks)
+
+
+Built-in Admission Controllers: (e.g., NamespaceLifecycle, ResourceQuota, LimitRanger) — enabled in API Server.
+----------------------------
+COMMON BUILT-IN ADMISSION CONTROLLERS
+
+| Controller                 | Purpose              |
+| -------------------------- | -------------------- |
+| NamespaceLifecycle         | Namespace validation |
+| LimitRanger                | Resource limits      |
+| ResourceQuota              | Namespace quotas     |
+| PodSecurity                | Security policies    |
+| DefaultStorageClass        | Default storage      |
+
+------------------------------
+
+
+Dynamic Admission Controllers (Webhooks) : You can write your own and register via Kubernetes API.
+----------------------------------------
+
+
+| Concept                  | Description                                        |
+| ------------------------ | -------------------------------------------------- |
+| **MutatingWebhook**      | Modifies objects (e.g., adds labels)               |
+| **ValidatingWebhook**    | Enforces policies (e.g., block requests)           |
+| **Common tools**         | OPA Gatekeeper, Kyverno, Istio, etc.               |
+
+| Tool           | Purpose                  |
+| -------------- | ------------------------ |
+| Kyverno        | Kubernetes policy engine |
+| OPA Gatekeeper | Governance policies      |
+| Istio          | Sidecar injection        |
+| Falco          | Runtime security         |
+
+
+LAB 1 — LimitRanger Admission Controller
+=======================================
+
+Automatically apply CPU limits to containers.
+
+kubectl create namespace dev   [Create Namespace]
+
+Create LimitRange
+------------
+
+vi limitrange.yml
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cpu-limit-range
+  namespace: dev
+spec:
+  limits:
+  - default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 200m
+      memory: 256Mi
+    type: Container
+
+
+| Field          | Meaning                      |
+| -------------- | ---------------------------- |
+| defaultRequest | Minimum guaranteed resources |
+| default        | Maximum allowed usage limit  |
+
+
+When pod DOES NOT specify requests,
+Kubernetes automatically assigns:
+CPU Request = 200m
+Memory Request = 256Mi
+
+
+What is a Request? Guaranteed minimum resources, Scheduler uses requests while placing pods on nodes.
+What is a Limit? Maximum resources container can consume, Container cannot exceed this.
+
+| Resource | Guaranteed | Maximum |
+| -------- | ---------- | ------- |
+| CPU      | 200m       | 500m    |
+| Memory   | 256Mi      | 512Mi   |
+
+
+
+kubectl apply -f limitrange.yml
+
+Create Pod WITHOUT Limits
+---------------------
+
+vi pod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+
+kubectl apply -f pod.yml
+
+Verify Mutation
+-------------
+kubectl get pod nginx -n dev -o yaml
+
+you will see
+resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+
+
+Admission Controller automatically injected limits.
+
+kubectl get pods -n dev
+kubectl describe pod nginx -n dev
+
+kubectl delete pod nginx
+kubectl delete ns dev
+
+
+
+
+LAB 2 — ResourceQuota Admission Controller
+========================================
+
+Restrict namespace to maximum 2 pods.
+
+kubectl create namespace dev   [Create Namespace]
+
+Create ResourceQuota
+-------------------
+
+vi quota.yml
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: pod-quota
+  namespace: dev
+spec:
+  hard:
+    pods: "2"
+
+kubectl apply -f quota.yml
+
+Create first pod: kubectl run pod1 --image=nginx -n dev
+Create second pod: kubectl run pod2 --image=nginx -n dev
+Create Third Pod (FAILS) : kubectl run pod3 --image=nginx -n dev
+error: Error from server (Forbidden): exceeded quota
+
+kubectl delete pod pod1 -n dev
+kubectl delete pod pod2 -n dev
+kubectl delete ns dev  [or directly delete the ns without deleting pods]
+
+LAB 3 — Pod Security Admission Controller
+================================
+Block privileged containers.
+
+What is Pod Security Admission?
+------------------------------
+Pod Security Admission is a built-in admission controller used to enforce security standards on pods.
+
+It can:
+------
+block privileged containers
+prevent root access
+restrict dangerous capabilities
+improve cluster security
+
+Security Levels
+----------------
+Kubernetes provides 3 levels:
+| Level      | Meaning         |
+| ---------- | --------------- |
+| privileged | No restrictions |
+| baseline   | Basic security  |
+| restricted | Strict security |
+
+Goal of This Lab: we will use restricted , production/bank/enterprise style
+----------------
+We will:
+
+Create namespace
+Enable restricted security policy
+Try creating insecure pod
+Kubernetes blocks it automatically
+
+kubectl apply
+      ↓
+API Server
+      ↓
+Pod Security Admission Controller
+      ↓
+ALLOW or DENY
+
+Create Namespace
+--------------
+kubectl create namespace secure-ns
+kubectl get ns
+
+Enable Pod Security Admission
+----------------
+kubectl label ns secure-ns pod-security.kubernetes.io/enforce=restricted
+
+Now Kubernetes will enforce:restricted security policy inside this namespace.
+
+Verify Label
+----------
+
+kubectl get ns secure-ns --show-labels
+expected result
+---------
+pod-security.kubernetes.io/enforce=restricted
+
+Create Insecure Pod
+-------------------
+
+vi insecurepod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: insecure-pod
+  namespace: secure-ns
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    securityContext:
+      privileged: true
+
+
+privileged: true , gives container
+host-level access
+elevated permissions
+almost root-like machine control
+
+Very dangerous in production.
+
+
+kubectl apply -f insecurepod.yml
+
+Kubernetes blocks it. Error from server (Forbidden): violates PodSecurity "restricted"
+
+kubectl apply/create
+      ↓
+API Server receives request
+      ↓
+Pod Security Admission Controller checks policy
+      ↓
+Finds privileged=true
+      ↓
+Rejects pod creation
+
+
+Create Secure Pod
+------------------
+
+vi securepod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+  namespace: secure-ns
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+
+kubectl apply -f securepod.yml
+
+kubectl get pods -n secure-ns
+
+secure-pod   crash ? why? as per security reasons it will not create , you need to clearly specify all the rules while creating pod because you have enabled POD security admission controller
+
+Now modify yml file, and also use unprivileged image
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+  namespace: secure-ns
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  containers:
+  - name: nginx
+    image: nginxinc/nginx-unprivileged
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+kubectl create -f secure.yml
+
+kubectl get pods -n secure-ns
+
+kubectl exec -it secure-pod -n secure-ns -- /bin/bash
+
+
+runAsNonRoot: true / Container must NOT run as root (UID 0) : Prevents:root access inside container and privilege escalation attacks
+runAsUser: 1000 / Forces container to run as Linux user ID 1000, This ensures: even if image defaults to root → Kubernetes overrides it
+
+seccompProfile: RuntimeDefault:  Applies Linux system call filtering . This restricts dangerous system calls
+like Firewall for Linux system calls
+
+nginxinc/nginx-unprivileged: This is a pre-built non-root version of nginx
+
+allowPrivilegeEscalation: false / Prevents container from gaining more privileges. Blocks setuid binaries and privilege escalation exploits
+
+capabilities.drop: ["ALL"] / Linux capabilities control system-level permissions.
+
+Dropping ALL means:
+✔ No special Linux powers like:
+NET_ADMIN
+SYS_ADMIN
+CHOWN
+Container becomes very restricted
+
+nginxinc/nginx-unprivileged / non-root user image good for Production.
+
+
+I am using root user to run kubectl but in yml it says runAsNonRoot: true , how it works?
+--------------------------------------------------------------------------
+Your Linux user (root running kubectl) has nothing to do with the user inside the container.
+
+They are two completely different layers in Kubernetes.
+--------------------------------------------
+1. Your machine (where you run kubectl) 2. Inside the container (Pod runtime)
+
+1. Your machine (where you run kubectl)
+-------------------
+
+root user on EC2 / VM
+
+This only means:
+
+you have permission to talk to Kubernetes API
+you can create/delete pods
+
+✔ This is called cluster access
+
+Inside the container (Pod runtime)
+--------------------------
+runAsNonRoot: true
+runAsUser: 1000
+
+This means:
+
+what Linux user the container process runs as
+
+✔ This is called container user
+
+kubectl EC2 root with admin access → controls cluster  
+runAsNonRoot → controls container
+
+✔ kubectl authentication ≠ container privilege
+✔ root on host ≠ root in container
+
+
+Final Pod Behavior
+---------------
+Pod starts as UID 1000
+No root access
+No special Linux privileges
+Seccomp filters applied
+
+runAsNonRoot → No root  
+runAsUser → Force safe user  
+allowPrivilegeEscalation → No privilege boost  
+capabilities.drop → No Linux admin powers  
+seccomp → Syscall firewall  
+
+WHY THIS WORKS (IMPORTANT)
+
+This pod satisfies ALL restricted rules:
+| Requirement              | Value          | Status                      |   |
+| ------------------------ | -------------- | --------------------------- | - |
+| runAsNonRoot             | true           | ✅                           |   |
+| runAsUser                | 1000           | ✅                           |   |
+| privileged               | not used       | ✅                           |   |
+| allowPrivilegeEscalation | false          | ✅                           |   |
+| capabilities             | ALL dropped    | ✅                           |   |
+| seccomp                  | RuntimeDefault | ✅                           |   |
+| image                    | non-root nginx | nginxinc/nginx-unprivileged | ✅ |
+
+
+| Pod Type        | Result  |
+| --------------- | ------- |
+| privileged=true | Blocked |
+| normal pod      | Allowed |
+
+
+Restricted mode blocks:
+
+privileged containers
+host networking
+host PID
+root filesystem modifications
+dangerous Linux capabilities
+
+
+===================================
+Till now we have seen Privileged and Restricted Policy , lets talk about Baseline Policy
+
+2. Baseline Policy
+------------------
+Purpose: Prevents clearly dangerous configurations while still allowing common workloads.
+
+Good for:
+
+normal applications
+dev/test environments
+moderate security
+
+What Baseline Blocks
+--------------
+❌ privileged containers
+❌ host PID access
+❌ host network access
+❌ dangerous Linux capabilities
+
+What Baseline Allows
+---------------------
+✅ Running as root (sometimes)
+
+✅ Standard application containers
+
+✅ Common workloads
+
+Example:
+-------
+kubectl create ns dev
+kubectl label ns dev pod-security.kubernetes.io/enforce=baseline
+
+
+3. Restricted Policy
+====================
+Purpose: Provides strong security enforcement.
+
+Good for:
+
+production
+multi-tenant clusters
+enterprise environments
+
+What Restricted Blocks
+------------------------
+Everything baseline blocks PLUS:
+
+❌ running as root
+❌ privilege escalation
+❌ writable root filesystem
+❌ unsafe capabilities
+❌ insecure seccomp settings
+
+Example:
+--------
+kubectl label ns prod pod-security.kubernetes.io/enforce=restricted
+
+
+| Policy     | Security Level |
+| ---------- | -------------- |
+| baseline   | Medium         |
+| restricted | High           |
+
+| Environment              | Recommended |
+| ------------------------ | ----------- |
+| Dev/Test                 | baseline    |
+| Production               | restricted  |
+| Highly secure enterprise | restricted  |
+
+
+Interview Questions
+-------------------
+| Feature               | Privileged                | Baseline          | Restricted                    |
+| --------------------- | ------------------------- | ----------------- | ----------------------------- |
+| Security level        | ❌ No security             | ⚠️ Medium         | 🔒 Strict                     |
+| Purpose               | Debug / trusted workloads | General workloads | Production / secure workloads |
+| Root user allowed     | ✅ Yes                     | ⚠️ Sometimes      | ❌ No                          |
+| Privileged containers | ✅ Allowed                 | ❌ Blocked         | ❌ Blocked                     |
+| HostNetwork / HostPID | ✅ Allowed                 | ❌ Blocked         | ❌ Blocked                     |
+| Privilege escalation  | ✅ Allowed                 | ❌ Limited         | ❌ Blocked                     |
+| Linux capabilities    | ✅ Full                    | ⚠️ Limited        | ❌ Dropped (ALL)               |
+| runAsNonRoot required | ❌ No                      | ❌ No              | ✅ Yes                         |
+| seccomp required      | ❌ No                      | ❌ No              | ✅ RuntimeDefault              |
+| Use case              | Debug, dev                | Dev/Test apps     | Production systems            |
+
+
+Privileged → No restrictions, full access
+Baseline → Blocks dangerous configs, allows normal apps
+Restricted → Strong security enforcement, no root, no privileges
+
+
+
+We know that we have 2 types of admission controllers, 1. Built in 2. Dynamic
+
+
+Dynamic Admission Controllers (Webhooks) : You can write your own and register via Kubernetes API.
+----------------------------------------
+
+
+What is Kyverno?
+---------------
+
+Kyverno (an admission controller)
+
+Kyverno (“policy” in Greek) is a Kubernetes-native policy engine that runs as a validating + mutating admission controller.
+It can:
+
+Validate resources (block if they don’t meet rules)
+
+Mutate resources (auto-add labels, annotations, etc.)
+
+
+Install HELM
+---------------
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+helm version
+
+
+Install Kyverno
+---------------
+
+helm repo add kyverno https://kyverno.github.io/kyverno/
+helm repo update
+helm install kyverno kyverno/kyverno -n kyverno --create-namespace
+
+kubectl get pods -n kyverno
+
+
+vi require-env-label.yml
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-env-label
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-env-label
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Pod must have an 'env' label (e.g., env=dev, env=prod)"
+        pattern:
+          metadata:
+            labels:
+              env: "?*"
+
+FYI
+---
+Warning: kyverno.io/v1 ClusterPolicy is deprecated and will be removed in a future release; migrate to ValidatingPolicy, MutatingPolicy, GeneratingPolicy or ImageValidatingPolicy (policies.kyverno.io), see https://kyverno.io/docs/guides/migration-to-cel/
+
+
+
+kubectl apply -f require-env-label.yaml
+
+kubectl run testpod --image=nginx    [get error]
+
+kubectl run testpod --image=nginx --labels=env=dev   [success]
+
+kubectl delete -f require-env-label.yaml
+
+Another example:  Whenever a new Pod is created — Kyverno will automatically add the label: environment: production
+--------------
+
+vi add-label-policy.yml
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-default-label
+spec:
+  rules:
+    - name: add-env-label
+      match:
+        resources:
+          kinds:
+            - Pod
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              environment: production
+
+kubectl apply -f add-label-policy.yaml
+
+
+Warning: kyverno.io/v1 ClusterPolicy is deprecated and will be removed in a future release; migrate to ValidatingPolicy, MutatingPolicy, GeneratingPolicy or ImageValidatingPolicy (policies.kyverno.io), see https://kyverno.io/docs/guides/migration-to-cel/
+clusterpolicy.kyverno.io/add-default-label created
+
+
+
+
+kubectl run nginx --image=nginx   [Create a pod]
+
+kubectl get pod nginx -o yaml | grep environment   [this command will give output in yaml]
+or
+kubectl describe pod nginx | grep production
+
+Workflow
+-------
+
+That label was automatically added by Kyverno before the Pod was admitted into the cluster.
+When you run kubectl run nginx, the Admission Controller (Kyverno) intercepts the API request.
+It checks your ClusterPolicy.
+It modifies the Pod spec to inject the missing label.
+Kubernetes then creates the modified Pod.
+
+This is a mutation-type Admission Controller example (it changes requests).
+
+1. What is an Admission Controller in Kubernetes?
+--------------------------------------------------
+Intercepts API requests after authentication/authorization
+Validates or mutates objects before storing in etcd
+
+At what stage do Admission Controllers work?
+---------------------------------------
+Authentication
+→ Authorization
+→ Admission Controller
+→ etcd
+
+Difference between Authentication, Authorization, and Admission Controller?
+
+| Component            | Purpose                            |
+| -------------------- | ---------------------------------- |
+| Authentication       | Who are you                        |
+| Authorization        | What can you do                    |
+| Admission Controller | Should request be modified/allowed |
+
+Difference between Mutating and Validating Admission Controllers?
+
+| Type       | Action                |
+| ---------- | --------------------- |
+| Mutating   | Modifies object       |
+| Validating | Allows/denies request |
+
+How would you prevent users from deploying privileged containers?
+Validating Admission Webhook
+OPA Gatekeeper
+Kyverno policies
+
+How would you enforce CPU/memory limits in a namespace?
+LimitRanger Admission Controller
+
+How would you restrict number of pods in a namespace?
+ResourceQuota Admission Controller
+
+How can you allow images only from approved registries?
+ValidatingAdmissionWebhook
+OPA Gatekeeper
+Kyverno
+
+example
+Allow only:
+company-registry.com/*
+
+What is a Dynamic Admission Controller?
+Uses external webhook
+Webhook decides allow/deny/mutate
+
+Explain ValidatingAdmissionWebhook.
+------------------------
+Sends object to external webhook
+Webhook validates request
+Returns allow/deny response
+
+Explain MutatingAdmissionWebhook.
+-------------------
+Modifies object before persistence
+Commonly used for:
+sidecar injection
+labels
+annotations
+default configs
+
+What happens if Admission Controller fails?
+-----------------------------------------
+In yml
+failurePolicy:
+  Ignore | Fail
+Ignore → request continues
+Fail → request blocked
+
+Difference between PodSecurityPolicy(PSP) and PodSecurity Admission?
+--------------------------------------
+PSP deprecated
+PodSecurity Admission replaced PSP
+Uses:
+privileged
+baseline
+restricted modes
+
+Have you implemented Admission Controllers in production?
+------------------------------------------------
+Blocking privileged pods
+Enforcing labels
+Restricting registries
+Auto sidecar injection
+Security compliance
+
+How do you debug Admission Webhook failures?
+------------------------------------
+Check API server logs
+Check webhook service
+Verify certificates
+Validate webhook configuration
+DNS/service connectivity
+
+kubectl get validatingwebhookconfigurations
+kubectl get mutatingwebhookconfigurations
+
+What are common issues with Admission Webhooks?
+---------------------------------------------
+TLS certificate problems
+webhook timeout
+API server latency
+DNS failures
+infinite mutation loops
+
+How do you check enabled Admission Controllers?
+--------------------------------------
+On control plane node:
+ps -ef | grep kube-apiserver
+look for
+--enable-admission-plugins
+
+How do you list webhook configurations?
+--------------------------------
+kubectl get validatingwebhookconfigurations
+
+kubectl get mutatingwebhookconfigurations
+
+
+Can Admission Controllers authenticate users?
+-------------------------------------------
+NO, Authentication happens BEFORE admission control.
+
+Can Admission Controllers modify existing objects?
+-----------------------------------------------
+They modify requests during API operations:
+
+create
+update
+delete
+
+Not directly editing stored etcd objects.
+
+Do Admission Controllers work for kubectl only?
+------------------------------------------
+
+❌ No
+
+They work for ALL API requests:
+
+kubectl
+CI/CD
+controllers
+operators
+REST API
+
+Explain complete request lifecycle in Kubernetes.
+------------------------------------------
+kubectl
+→ API Server
+→ Authentication
+→ Authorization
+→ Admission Controllers
+→ etcd
+→ Scheduler
+→ Kubelet
+
+Developers are deploying containers without limits and using Docker Hub images directly. How would you solve it?
+
+LimitRanger
+ResourceQuota
+Validating Admission Webhook
+OPA/Kyverno
+restrict registries
+enforce policies
+
+Admission Controllers are Kubernetes API request interceptors that validate or mutate objects before persistence in etcd.
+
+
+Does the control plane has kubelet and Static Pods?
+---------------------------------
+yes, Control Plane is also a node in cluster, it has kubelet that create all control plane components like apiserver, etcd, schedular
+All these are static pods which are managed and maintained by kubelet
