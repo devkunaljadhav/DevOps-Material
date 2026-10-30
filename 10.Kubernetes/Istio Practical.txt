@@ -1,0 +1,197 @@
+# Check nodes
+kubectl get nodes
+
+# Check Kubernetes connection
+kubectl cluster-info
+
+# Check kubectl version
+kubectl version
+
+# Check namespaces
+kubectl get ns
+
+#Install Istio
+#Download Istio:
+curl -L https://istio.io/downloadIstio | sh -
+
+cd istio-*
+
+#Add Istio to PATH:
+export PATH=$PWD/bin:$PATH
+
+#Verify:
+istioctl version
+
+#Install Istio:
+istioctl install --set profile=demo -y
+
+#Check Pods:
+kubectl get pods -n istio-system
+
+#Check services:
+kubectl get svc -n istio-system
+
+#Check deployments:
+kubectl get deployments -n istio-system
+
+#Verify installation:
+istioctl verify-install
+
+#Enable Automatic Sidecar Injection
+kubectl create namespace istio-demo
+
+#Enable injection:
+kubectl label namespace istio-demo \
+istio-injection=enabled
+
+kubectl get namespace istio-demo --show-labels
+
+#Create Nginx Deployment
+vi nginx-deployment.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: istio-demo
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+        version: v1
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27
+        ports:
+        - containerPort: 80
+
+kubectl apply -f nginx-deployment.yml
+kubectl get pods -n istio-demo
+
+kubectl get pods -n istio-demo \
+-o jsonpath='{range .items[*]}{.metadata.name}{" : "}{.spec.containers[*].name}{"\n"}{end}'
+
+
+#Create Kubernetes Service
+vi nginx-service.yml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: istio-demo
+spec:
+  selector:
+    app: nginx
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  type: ClusterIP
+
+kubectl apply -f nginx-service.yml
+
+kubectl get svc -n istio-demo
+
+
+#Create Istio Gateway
+
+vi gateway.yml
+
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: nginx-gateway
+  namespace: istio-demo
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+
+kubectl apply -f gateway.yml
+kubectl get gateway -n istio-demo
+
+
+#Create VirtualService
+
+vi virtual-service.yml
+
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: nginx-virtualservice
+  namespace: istio-demo
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - nginx-gateway
+  http:
+  - route:
+    - destination:
+        host: nginx-service
+        port:
+          number: 80
+
+kubectl apply -f virtual-service.yml
+
+kubectl get virtualservice -n istio-demo
+
+#Check Istio Ingress Gateway:
+kubectl get svc istio-ingressgateway -n istio-system
+
+#Get HTTP NodePort:
+kubectl get svc istio-ingressgateway \
+-n istio-system \
+-o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}'
+
+#Get node public IP:
+kubectl get nodes -o wide
+
+
+#Test:
+curl http://NODE_PUBLIC_IP:NODEPORT/
+
+#Expected output:
+Welcome to nginx!
+
+#Verify Istio Configuration
+# Check Istio pods
+kubectl get pods -n istio-system
+
+# Check application pods
+kubectl get pods -n istio-demo
+
+# Check Gateway
+kubectl get gateway -n istio-demo
+
+# Check VirtualService
+kubectl get virtualservice -n istio-demo
+
+# Check proxy status
+istioctl proxy-status
+
+# Analyze configuration
+istioctl analyze -n istio-demo
+
+#Cleanup
+kubectl delete namespace istio-demo
+istioctl uninstall --purge -y
+kubectl delete namespace istio-system
+or 
+#Delete The Cluster 
+kops delete clusters --name kunal1625.k8s.local --yes
